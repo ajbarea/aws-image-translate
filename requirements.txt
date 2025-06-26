@@ -3,3 +3,4 @@ praw
 requests
 pytest
 pytest-cov
+moto

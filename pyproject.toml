@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:botocore.*",
+    "ignore::DeprecationWarning:boto3.*",
+]
+addopts = "-v --tb=short"
+testpaths = ["tests"]

@@ -26,11 +26,13 @@ LANGUAGE_CODES = {
     "ko": "Korean",
 }
 
-# Reddit API Credentials
+# Reddit API Credentials taken from environment variables
+# Ensure these are set in your environment or .env.local file
 REDDIT_CLIENT_ID = os.environ["REDDIT_CLIENT_ID"]
 REDDIT_CLIENT_SECRET = os.environ["REDDIT_CLIENT_SECRET"]
-REDDIT_USER_AGENT = os.environ.get(
-    "REDDIT_USER_AGENT", "python:translate-images-bot:1.0 (by u/NoNeck4585)"
-)
+REDDIT_USER_AGENT = os.environ["REDDIT_USER_AGENT"]
 REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
 REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
+
+# DynamoDB Configuration
+DYNAMODB_TABLE_NAME = "reddit_ingest_state"
