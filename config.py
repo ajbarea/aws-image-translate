@@ -28,11 +28,11 @@ LANGUAGE_CODES = {
 
 # Reddit API Credentials taken from environment variables
 # Ensure these are set in your environment or .env.local file
-REDDIT_CLIENT_ID = os.environ["REDDIT_CLIENT_ID"]
-REDDIT_CLIENT_SECRET = os.environ["REDDIT_CLIENT_SECRET"]
-REDDIT_USER_AGENT = os.environ["REDDIT_USER_AGENT"]
-REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
-REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
+REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
+REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
+REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT")
+REDDIT_USERNAME = os.getenv("REDDIT_USERNAME")
+REDDIT_PASSWORD = os.getenv("REDDIT_PASSWORD")
 
 # DynamoDB Configuration
-DYNAMODB_TABLE_NAME = "reddit_ingest_state"
+DYNAMODB_TABLE_NAME = os.getenv("DYNAMODB_TABLE_NAME", "reddit_ingest_state")
