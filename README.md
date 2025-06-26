@@ -52,6 +52,18 @@ python main.py --bucket mybucket --source-lang es --target-lang en
 
 If no arguments are provided, the defaults from `config.py` will be used.
 
+## Environment Variables
+
+Before running the application, create a `.env.local` file in the project root with your Reddit API credentials:
+
+```env
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
+REDDIT_USER_AGENT=python:translate-images-bot:1.0 (by u/yourusername)
+```
+
+Replace the values with your own Reddit API credentials. This file is required for the application to access Reddit APIs.
+
 ## Testing & Coverage
 
 Run all tests with coverage:
