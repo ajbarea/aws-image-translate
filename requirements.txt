@@ -4,3 +4,4 @@ requests
 pytest
 pytest-cov
 moto
+python-dotenv
