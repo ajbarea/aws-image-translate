@@ -1,6 +1,10 @@
-# aws-image-translate
+# AWS Reddit Image Translation Pipeline
 
 Prototyping an image translation system using AWS services.
+
+## Documentation
+
+For a comprehensive overview of the AWS-based Reddit image processing pipeline, see [src/reddit-aws-pipeline-docs.md](src/reddit-aws-pipeline-docs.md).
 
 ## AWS Credentials Setup
 
