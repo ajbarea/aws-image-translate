@@ -64,4 +64,38 @@ def update_last_processed_post_id(table_name, subreddit_key, post_id):
 if __name__ == "__main__":
     TEST_TABLE_NAME = "reddit_ingest_state_test"
     TEST_SUBREDDIT_KEY = "r/testsubreddit"
-    # Example usage and manual table creation code is available in docs.md
+    print("--- DynamoDB Table Existence Check ---")
+    client = boto3.client("dynamodb", region_name=AWS_REGION)
+    existing_tables = client.list_tables()["TableNames"]
+    if TEST_TABLE_NAME not in existing_tables:
+        print(f"Table '{TEST_TABLE_NAME}' does not exist. Creating it now...")
+        client.create_table(
+            TableName=TEST_TABLE_NAME,
+            KeySchema=[{"AttributeName": "subreddit_key", "KeyType": "HASH"}],
+            AttributeDefinitions=[
+                {"AttributeName": "subreddit_key", "AttributeType": "S"}
+            ],
+            ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
+        )
+        print("Waiting for table to be created...")
+        waiter = client.get_waiter("table_exists")
+        waiter.wait(TableName=TEST_TABLE_NAME)
+        print(f"Table '{TEST_TABLE_NAME}' created.")
+    else:
+        print(f"Table '{TEST_TABLE_NAME}' already exists.")
+    print("--- Basic DynamoDB utility test ---")
+    print(f"Getting last_processed_post_id for {TEST_SUBREDDIT_KEY}...")
+    post_id = get_last_processed_post_id(TEST_TABLE_NAME, TEST_SUBREDDIT_KEY)
+    print(f"Initial last_processed_post_id: {post_id}")
+
+    print(
+        f"Updating last_processed_post_id for {TEST_SUBREDDIT_KEY} to 't3_testid123'..."
+    )
+    success = update_last_processed_post_id(
+        TEST_TABLE_NAME, TEST_SUBREDDIT_KEY, "t3_testid123"
+    )
+    print(f"Update success: {success}")
+
+    print(f"Getting last_processed_post_id for {TEST_SUBREDDIT_KEY} after update...")
+    post_id = get_last_processed_post_id(TEST_TABLE_NAME, TEST_SUBREDDIT_KEY)
+    print(f"Updated last_processed_post_id: {post_id}")
