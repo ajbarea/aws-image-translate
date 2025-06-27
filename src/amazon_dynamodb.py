@@ -61,16 +61,17 @@ def update_last_processed_post_id(table_name, subreddit_key, post_id):
         return False
 
 
-if __name__ == "__main__":
-    TEST_TABLE_NAME = "reddit_ingest_state_test"
-    TEST_SUBREDDIT_KEY = "r/testsubreddit"
-    print("--- DynamoDB Table Existence Check ---")
+def table_exists(table_name):
     client = boto3.client("dynamodb", region_name=AWS_REGION)
-    existing_tables = client.list_tables()["TableNames"]
-    if TEST_TABLE_NAME not in existing_tables:
-        print(f"Table '{TEST_TABLE_NAME}' does not exist. Creating it now...")
+    return table_name in client.list_tables()["TableNames"]
+
+
+def create_table_if_not_exists(table_name):
+    client = boto3.client("dynamodb", region_name=AWS_REGION)
+    if not table_exists(table_name):
+        print(f"Table '{table_name}' does not exist. Creating it now...")
         client.create_table(
-            TableName=TEST_TABLE_NAME,
+            TableName=table_name,
             KeySchema=[{"AttributeName": "subreddit_key", "KeyType": "HASH"}],
             AttributeDefinitions=[
                 {"AttributeName": "subreddit_key", "AttributeType": "S"}
@@ -79,10 +80,36 @@ if __name__ == "__main__":
         )
         print("Waiting for table to be created...")
         waiter = client.get_waiter("table_exists")
-        waiter.wait(TableName=TEST_TABLE_NAME)
-        print(f"Table '{TEST_TABLE_NAME}' created.")
+        waiter.wait(TableName=table_name)
+        print(f"Table '{table_name}' created.")
     else:
-        print(f"Table '{TEST_TABLE_NAME}' already exists.")
+        print(f"Table '{table_name}' already exists.")
+
+
+def delete_table_if_exists(table_name):
+    client = boto3.client("dynamodb", region_name=AWS_REGION)
+    if table_exists(table_name):
+        print(f"Deleting table '{table_name}'...")
+        client.delete_table(TableName=table_name)
+        waiter = client.get_waiter("table_not_exists")
+        waiter.wait(TableName=table_name)
+        print(f"Table '{table_name}' deleted.")
+    else:
+        print(f"Table '{table_name}' does not exist.")
+
+
+if __name__ == "__main__":
+    import sys
+
+    TEST_TABLE_NAME = "reddit_ingest_state_test"
+    TEST_SUBREDDIT_KEY = "r/testsubreddit"
+
+    if len(sys.argv) > 1 and sys.argv[1] == "delete-table":
+        delete_table_if_exists(TEST_TABLE_NAME)
+        sys.exit(0)
+
+    print("--- DynamoDB Table Existence Check ---")
+    create_table_if_not_exists(TEST_TABLE_NAME)
     print("--- Basic DynamoDB utility test ---")
     print(f"Getting last_processed_post_id for {TEST_SUBREDDIT_KEY}...")
     post_id = get_last_processed_post_id(TEST_TABLE_NAME, TEST_SUBREDDIT_KEY)
