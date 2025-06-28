@@ -1,37 +1,37 @@
 # AWS Translation Pipeline Demo
 
+> **Complete End-to-End Translation Pipeline Demonstration**  
+> Hands-on examples showcasing AWS Rekognition OCR, Comprehend language detection, and Translate multi-language capabilities with real image processing workflows.
+
 This directory contains a complete demonstration of an AWS-based translation pipeline that extracts text from images, detects the language, and translates it to a target language.
 
-## Components
+## 🔧 Components
 
-### Individual Scripts (located in `pipeline/`)
+### Individual Pipeline Scripts (located in `pipeline/`)
 
-1. **`detect_text.py`** - Extracts text from images using AWS Rekognition
-2. **`detect_language.py`** - Detects the language of text using AWS Comprehend  
-3. **`translate_text.py`** - Translates text between languages using AWS Translate
+1. **`detect_text.py`** - **AWS Rekognition OCR**: Extracts text from images using computer vision
+2. **`detect_language.py`** - **AWS Comprehend NLP**: Detects the language of text using natural language processing  
+3. **`translate_text.py`** - **AWS Translate**: Translates text between 75+ languages using machine translation
 
-### Pipeline Script
+### Orchestration Scripts
 
-- **`aws_pipeline.py`** - Orchestrates all three components in sequence, including automatic S3 image upload if the image is not found.
+- **`aws_pipeline.py`** - **Complete Pipeline Orchestrator**: Chains all three components in sequence, includes automatic S3 image upload and error handling
+- **`test_components.py`** - **Unit Component Testing**: Tests individual components with sample data for validation
 
-### Test Scripts
+## 📋 Prerequisites
 
-- **`test_components.py`** - Tests individual components with sample data
+### AWS Configuration Requirements
 
-## Prerequisites
+1. **AWS Account** with appropriate IAM permissions
+2. **AWS CLI** configured with credentials (`aws configure`)
+3. **S3 Bucket** with sample images containing readable text
+4. **Required AWS Service Permissions**:
+   - **Rekognition**: `DetectText` (OCR text extraction)
+   - **Comprehend**: `DetectDominantLanguage` (language identification)
+   - **Translate**: `TranslateText` (text translation)
+   - **S3**: `GetObject`, `PutObject` (image storage operations)
 
-### AWS Setup
-
-1. **AWS Account** with appropriate permissions
-2. **AWS CLI** configured with credentials
-3. **S3 Bucket** with sample images containing text
-4. **Required AWS Permissions**:
-   - Rekognition: `DetectText`
-   - Comprehend: `DetectDominantLanguage`
-   - Translate: `TranslateText`
-   - S3: `GetObject` (for images)
-
-### Python Dependencies
+### Python Environment Dependencies
 
 Install required packages:
 
@@ -39,35 +39,35 @@ Install required packages:
 pip install -r requirements.txt
 ```
 
-### Configuration
+### Configuration Setup
 
 Update the configuration in `aws_pipeline.py`:
 
 ```python
-bucket_name = "your-s3-bucket-name"  # Replace with your bucket
-image_name = "your-image.png"        # Replace with your image
-target_language = "en"               # Target language code
+bucket_name = "your-s3-bucket-name"  # Replace with your S3 bucket
+image_name = "your-image.png"        # Replace with your test image
+target_language = "en"               # Target language code (ISO 639-1)
 ```
 
-Note: The `aws_pipeline.py` and `test_components.py` scripts will automatically upload `spanish_images/es1.png` to your S3 bucket if it's not already present.
+**Note**: The `aws_pipeline.py` and `test_components.py` scripts will automatically upload `spanish_images/es1.png` to your S3 bucket if it's not already present.
 
-## Usage
+## 🚀 Usage Guide
 
 ### Running Individual Components
 
-Test text detection:
+**Test OCR text detection:**
 
 ```bash
 python aws-demos/pipeline/detect_text.py
 ```
 
-Test language detection:
+**Test language detection:**
 
 ```bash
 python aws-demos/pipeline/detect_language.py
 ```
 
-Test translation:
+**Test machine translation:**
 
 ```bash
 python aws-demos/pipeline/translate_text.py
@@ -75,23 +75,27 @@ python aws-demos/pipeline/translate_text.py
 
 ### Running the Complete Pipeline
 
+**Execute full translation workflow:**
+
 ```bash
 python aws-demos/aws_pipeline.py
 ```
 
 ### Testing Components
 
+**Run component validation tests:**
+
 ```bash
 python aws-demos/test_components.py
 ```
 
-## Pipeline Workflow
+## 🔄 Pipeline Workflow
 
 1. **Text Detection**: Uses AWS Rekognition to extract text from an image stored in S3
 2. **Language Detection**: Uses AWS Comprehend to identify the language of the extracted text
 3. **Translation**: Uses AWS Translate to convert text to the target language (if needed)
 
-## Sample Output
+## 📊 Sample Output
 
 ```log
 ==============================================================

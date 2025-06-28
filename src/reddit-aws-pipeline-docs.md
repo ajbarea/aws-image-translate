@@ -1,33 +1,47 @@
 # Reddit AWS Processing Pipeline
 
-A comprehensive AWS-based pipeline for ingesting, processing, and analyzing Reddit content with image text extraction and translation capabilities.
+> **Comprehensive AWS-Based Reddit Content Analysis System**  
+> Advanced pipeline for automated Reddit image processing, text extraction, language detection, and multi-language translation using AWS AI/ML services.
 
-## Overview
+## 🌟 Overview
 
-This project provides a scalable solution for collecting Reddit posts containing images, extracting text from those images using AWS Rekognition, and translating the extracted text using AWS Translate. The pipeline maintains state tracking through DynamoDB and stores processed images in S3.
+This project provides a scalable solution for collecting Reddit posts containing images, extracting text from those images using AWS Rekognition OCR, and translating the extracted text using AWS Translate. The pipeline maintains stateful processing through DynamoDB and stores processed images in S3 with enterprise-grade security.
 
-### Architecture Components
+### 🏗️ Architecture Components
 
-- **Amazon DynamoDB**: State management and tracking of processed posts
-- **Amazon S3**: Storage for downloaded images and processed content
-- **Amazon Rekognition**: Text detection and extraction from images
-- **Amazon Translate**: Multi-language text translation
-- **AWS Lambda**: Serverless execution environment for pipeline processing
+- **Amazon DynamoDB**: State management and tracking of processed Reddit posts
+- **Amazon S3**: Secure storage for downloaded images and processed content  
+- **Amazon Rekognition**: AI-powered text detection and extraction from images (OCR)
+- **Amazon Comprehend**: Natural language processing for intelligent language detection
+- **Amazon Translate**: Multi-language text translation supporting 75+ languages
+- **AWS Lambda**: Serverless execution environment for scalable pipeline processing
+- **Reddit API Integration**: Automated content discovery and image extraction from subreddits
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- AWS Account with appropriate permissions
-- Python 3.8+
-- AWS CLI configured with credentials
-- Required Python packages (see Installation)
+- **AWS Account** with appropriate IAM permissions for AI/ML services
+- **Python 3.8+** runtime environment
+- **AWS CLI** configured with programmatic access credentials
+- **Reddit API** credentials for content access
+- **Required Python packages** (see Installation section)
 
 ### Installation
 
 ```bash
-pip install boto3 requests python-dotenv
+pip install -r requirements.txt
 ```
+
+**Required packages include:**
+
+- `boto3` - AWS SDK for Python (AWS service integration)
+- `praw` - Python Reddit API Wrapper (Reddit content access)
+- `requests` - HTTP library for web requests
+- `pytest` - Testing framework for unit tests
+- `pytest-cov` - Coverage plugin for test metrics
+- `moto` - AWS services mocking for testing
+- `python-dotenv` - Environment variable management
 
 ### Environment Configuration
 
@@ -55,26 +69,28 @@ result = process_new_images_from_reddit(
 print(f"Processed: {result['processed_count']} images")
 ```
 
-## Module Documentation
+## 📚 Module Documentation
 
 ### DynamoDB Utilities (`amazon_dynamodb.py`)
 
-Manages state persistence for tracking processing progress across subreddits.
+**Purpose**: Manages state persistence for tracking processing progress across subreddits.
 
 #### Core Functions
 
 **`get_dynamodb_resource()`**
 
 - Initializes DynamoDB resource for the configured AWS region
-- Returns: `boto3.resource` object for DynamoDB operations
+- **Returns**: `boto3.resource` object for DynamoDB operations
+- **Use Case**: Foundation for all DynamoDB operations
 
 **`get_last_processed_post_id(table_name, subreddit_key)`**
 
 - Retrieves the most recently processed post ID for a subreddit
 - **Parameters:**
-  - `table_name` (str): DynamoDB table name
+  - `table_name` (str): DynamoDB table name for state tracking
   - `subreddit_key` (str): Subreddit identifier (e.g., "r/translator")
-- **Returns:** Post ID string or `None` if not found
+- **Returns**: Post ID string or `None` if not found
+- **Use Case**: Resume processing from last checkpoint
 
 **`update_last_processed_post_id(table_name, subreddit_key, post_id)`**
 
@@ -83,7 +99,8 @@ Manages state persistence for tracking processing progress across subreddits.
   - `table_name` (str): DynamoDB table name
   - `subreddit_key` (str): Subreddit identifier
   - `post_id` (str): Reddit post ID to record
-- **Returns:** `True` on success, `False` on error
+- **Returns**: `True` on success, `False` on error
+- **Use Case**: Checkpoint progress to avoid reprocessing
 
 #### Usage Example
 
@@ -109,7 +126,7 @@ client.create_table(
     TableName="reddit_ingest_state_test",
     KeySchema=[{'AttributeName': 'subreddit_key', 'KeyType': 'HASH'}],
     AttributeDefinitions=[{'AttributeName': 'subreddit_key', 'AttributeType': 'S'}],
-    ProvisionedThroughput={'ReadCapacityUnits': 1, 'WriteCapacityUnits': 1}
+    BillingMode='PAY_PER_REQUEST'  # No need for ProvisionedThroughput
 )
 
 # Wait for table creation
@@ -119,33 +136,36 @@ waiter.wait(TableName="reddit_ingest_state_test")
 
 ### S3 Utilities (`amazon_s3.py`)
 
-Handles file storage and retrieval operations in Amazon S3.
+**Purpose**: Handles secure file storage and retrieval operations in Amazon S3.
 
 #### S3 Core Functions
 
 **`list_images_in_bucket(bucket)`**
 
 - Lists all image files (PNG, JPG, JPEG) in the specified bucket
-- **Parameters:** `bucket` (str): S3 bucket name
-- **Returns:** List of image file names
+- **Parameters**: `bucket` (str): S3 bucket name
+- **Returns**: List of image file names
+- **Use Case**: Inventory existing processed images
 
 **`upload_file_to_s3(file_path, bucket_name, object_name=None)`**
 
-- Uploads a local file to S3
+- Uploads a local file to S3 with automatic error handling
 - **Parameters:**
   - `file_path` (str): Local file path
   - `bucket_name` (str): Target S3 bucket
   - `object_name` (str, optional): S3 object key (defaults to filename)
-- **Returns:** `True` on success, `False` on error
+- **Returns**: `True` on success, `False` on error
+- **Use Case**: Store Reddit images for processing
 
 **`upload_fileobj_to_s3(fileobj, bucket_name, object_name)`**
 
-- Uploads a file-like object directly to S3
+- Uploads a file-like object directly to S3 (memory efficient)
 - **Parameters:**
   - `fileobj`: File-like object (BytesIO, file handle, etc.)
   - `bucket_name` (str): Target S3 bucket
   - `object_name` (str): S3 object key
-- **Returns:** `True` on success, `False` on error
+- **Returns**: `True` on success, `False` on error
+- **Use Case**: Stream images directly from Reddit URLs
 
 #### S3 Usage Example
 
@@ -162,20 +182,21 @@ print(f"Found {len(images)} images")
 
 ### Rekognition Utilities (`amazon_rekognition.py`)
 
-Provides text detection and extraction from images using AWS Rekognition.
+**Purpose**: Provides AI-powered text detection and extraction from images using AWS Rekognition OCR.
 
 #### Rekognition Core Functions
 
 **`detect_text_from_s3(photo, bucket)`**
 
-- Detects and extracts text from an image stored in S3
+- Detects and extracts text from an image stored in S3 using computer vision
 - **Parameters:**
   - `photo` (str): S3 object key for the image
   - `bucket` (str): S3 bucket name
-- **Returns:** String containing all detected text lines (space-separated)
+- **Returns**: String containing all detected text lines (space-separated)
 - **Raises:**
   - `botocore.exceptions.BotoCoreError`: Low-level AWS SDK errors
   - `botocore.exceptions.ClientError`: Rekognition API errors
+- **Use Case**: Extract text from memes, screenshots, documents
 
 #### Rekognition Usage Example
 
@@ -189,21 +210,22 @@ print(f"Extracted text: {text}")
 
 ### Translate Utilities (`amazon_translate.py`)
 
-Handles text translation between different languages using AWS Translate.
+**Purpose**: Handles intelligent text translation between different languages using AWS Translate.
 
 #### Translate Core Functions
 
 **`translate_text(text, source_lang, target_lang)`**
 
-- Translates text between specified languages
+- Translates text between specified languages with high accuracy
 - **Parameters:**
   - `text` (str): Text to translate
   - `source_lang` (str): Source language code (e.g., 'en', 'es', 'fr')
   - `target_lang` (str): Target language code
-- **Returns:** Translated text string
+- **Returns**: Translated text string
 - **Raises:**
   - `botocore.exceptions.BotoCoreError`: Low-level AWS SDK errors
   - `botocore.exceptions.ClientError`: Translate API errors
+- **Use Case**: Translate extracted text to desired language
 
 #### Translate Usage Example
 
@@ -217,16 +239,17 @@ print(f"Translation: {spanish_text}")  # Output: "Hola mundo"
 
 ### Image Processor (`image_processor.py`)
 
-Main pipeline orchestration module handling end-to-end image processing workflow.
+**Purpose**: Main pipeline orchestration module handling end-to-end image processing workflow.
 
 #### Image Processor Core Functions
 
 **`download_image(url)`**
 
-- Downloads an image from a URL into memory
-- **Parameters:** `url` (str): Image URL to download
-- **Returns:** Tuple of `(BytesIO object, content_type)` or `(None, None)` on error
-- **Supported formats:** JPEG, PNG, GIF
+- Downloads an image from a URL into memory with error handling
+- **Parameters**: `url` (str): Image URL to download
+- **Returns**: Tuple of `(BytesIO object, content_type)` or `(None, None)` on error
+- **Supported formats**: JPEG, PNG, GIF
+- **Use Case**: Fetch images from Reddit posts
 
 **`generate_s3_object_name(post_id, image_url, content_type)`**
 
@@ -235,17 +258,18 @@ Main pipeline orchestration module handling end-to-end image processing workflow
   - `post_id` (str): Reddit post identifier
   - `image_url` (str): Original image URL
   - `content_type` (str): MIME type of the image
-- **Returns:** Generated S3 object key string
+- **Returns**: Generated S3 object key string
+- **Use Case**: Organize images with meaningful names
 
-**`process_new_images_from_reddit(s3_bucket_name, dynamodb_table_name, subreddit_name, reddit_fetch_limit)`**
+**`process_new_images_from_reddit(s3_bucket_name, dynamodb_table_name, subreddit_name="translator", reddit_fetch_limit=25)`**
 
 - Main processing function that orchestrates the entire pipeline
 - **Parameters:**
   - `s3_bucket_name` (str): Target S3 bucket for images
   - `dynamodb_table_name` (str): DynamoDB table for state tracking
-  - `subreddit_name` (str): Target subreddit name
-  - `reddit_fetch_limit` (int): Maximum posts to process
-- **Returns:** Dictionary with processing results:
+  - `subreddit_name` (str, optional): Target subreddit name (default: "translator")
+  - `reddit_fetch_limit` (int, optional): Maximum posts to process (default: 25)
+- **Returns**: Dictionary with processing results:
 
   ```python
   {
@@ -263,17 +287,19 @@ Main pipeline orchestration module handling end-to-end image processing workflow
 - **Parameters:**
   - `event` (dict): Lambda event payload
   - `context`: Lambda context object
-- **Returns:** HTTP response dictionary with status code and body
+- **Returns**: HTTP response dictionary with status code and body
+- **Use Case**: Scheduled processing in Lambda
 
 #### Pipeline Workflow
 
-1. **Fetch Reddit Posts**: Retrieve new posts from specified subreddit
+1. **Fetch Reddit Posts**: Retrieve new posts from specified subreddit using Reddit API
 2. **State Check**: Compare against last processed post ID from DynamoDB
-3. **Image Download**: Download images from Reddit posts
+3. **Image Download**: Download images from Reddit posts to memory
 4. **S3 Upload**: Store images in S3 with generated object keys
-5. **Text Extraction**: Use Rekognition to detect text in images
-6. **Translation**: Translate extracted text using AWS Translate
-7. **State Update**: Update DynamoDB with latest processed post ID
+5. **Text Extraction**: Use Rekognition OCR to detect text in images
+6. **Language Detection**: Use Comprehend to identify source language
+7. **Translation**: Translate extracted text using AWS Translate
+8. **State Update**: Update DynamoDB with latest processed post ID
 
 #### Image Processor Usage Example
 
@@ -295,13 +321,13 @@ else:
     print(f"Processing failed: {result['message']}")
 ```
 
-## AWS Lambda Deployment
+## ☁️ AWS Lambda Deployment
 
 ### Lambda Configuration
 
-- **Runtime**: Python 3.9+
+- **Runtime**: Python 3.9+ (recommended for compatibility)
 - **Memory**: 512 MB (adjust based on image sizes)
-- **Timeout**: 5 minutes
+- **Timeout**: 5 minutes (for processing multiple images)
 - **Environment Variables**:
   - `S3_BUCKET_NAME`: Target S3 bucket
   - `DYNAMODB_TABLE_NAME`: State tracking table
@@ -367,7 +393,7 @@ Example CloudWatch Events rule for scheduled execution:
 }
 ```
 
-## Error Handling and Monitoring
+## 🛠️ Error Handling and Monitoring
 
 ### Error Handling Strategy
 
@@ -383,7 +409,7 @@ Example CloudWatch Events rule for scheduled execution:
 - **DynamoDB Metrics**: Monitor read/write capacity utilization
 - **S3 Metrics**: Track storage usage and request patterns
 
-## Common Issues and Solutions
+## 🔧 Common Issues and Solutions
 
 ### Reddit API Rate Limiting
 
@@ -400,7 +426,7 @@ Example CloudWatch Events rule for scheduled execution:
 - Monitor and adjust read/write capacity units
 - Implement retry logic with exponential backoff
 
-## Best Practices
+## ✅ Best Practices
 
 ### Performance Optimization
 
@@ -421,7 +447,7 @@ Example CloudWatch Events rule for scheduled execution:
 - Consider VPC endpoints for internal AWS service communication
 - Regularly rotate AWS access keys if using programmatic access
 
-## Contributing
+## 🤝 Contributing
 
 When contributing to this project:
 
@@ -431,6 +457,6 @@ When contributing to this project:
 4. Update documentation for any API changes
 5. Test with actual AWS resources before submitting PRs
 
-## License
+## 📄 License
 
 This project is provided as-is for educational and development purposes. Ensure compliance with Reddit's API terms of service and AWS acceptable use policies.

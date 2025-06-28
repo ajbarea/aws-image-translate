@@ -1,32 +1,58 @@
 # AWS Reddit Image Translation Pipeline
 
-Prototyping an image translation system using AWS services.
+> **AI-Powered Image Text Extraction and Translation System**  
+> Automatically detect, extract, and translate text from Reddit images using AWS AI services including Rekognition, Comprehend, and Translate.
 
-## Documentation
+## 📚 Comprehensive Documentation Hub
 
-For a comprehensive overview of the AWS-based Reddit image processing pipeline, see [src/reddit-aws-pipeline-docs.md](src/reddit-aws-pipeline-docs.md).
-For a demonstration of the AWS Translation Pipeline, see [aws-demos/README.md](aws-demos/README.md).
+| Document | Purpose | Key Topics |
+|----------|---------|------------|
+| **[Reddit Pipeline Documentation](src/reddit-aws-pipeline-docs.md)** | Complete technical guide | Reddit API integration, AWS service architecture, module APIs, deployment patterns |
+| **[AWS Translation Demo](aws-demos/README.md)** | Hands-on examples | Live pipeline demonstrations, component testing, troubleshooting guides |
+| **[Infrastructure Guide](terraform/README.md)** | Infrastructure automation | Terraform deployment, cost optimization, security best practices |
 
-## AWS Credentials Setup
+## 🏗️ System Architecture Overview
 
-Before running, make sure you have AWS credentials configured. Create the following files with your AWS access keys and region:
+**Core Components:**
 
-- `~/.aws/credentials`:
+- **Reddit Integration**: Automated content discovery and image extraction
+- **AWS Rekognition**: OCR text detection and extraction from images
+- **AWS Comprehend**: Intelligent language detection and confidence scoring
+- **AWS Translate**: Multi-language text translation with 75+ language support
+- **DynamoDB**: Stateful processing tracking and Reddit post management
+- **S3 Storage**: Secure image storage with encryption and lifecycle management
+- **Lambda Functions**: Serverless execution environment for scalable processing
 
-  ```ini
-  [default]
-  aws_access_key_id = YOUR_ACCESS_KEY_ID
-  aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-  ```
+## ⚙️ AWS Credentials Setup
 
-- `~/.aws/config`:
+### Essential Security Configuration
 
-  ```ini
-  [default]
-  region=us-east-1
-  ```
+Before running any AWS operations, configure your AWS credentials securely. Create the following credential files with your AWS access keys and region:
 
-## Setup
+**`~/.aws/credentials`:**
+
+```ini
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY_ID
+aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
+```
+
+**`~/.aws/config`:**
+
+```ini
+[default]
+region=us-east-1
+```
+
+**Alternative Methods:**
+
+- AWS CLI: `aws configure`
+- Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+- IAM roles (recommended for EC2/Lambda)
+
+## 🚀 Quick Start Guide
+
+### Setup
 
 ```bash
 python -m venv .venv
@@ -35,21 +61,23 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Running the CLI
+### Running the CLI
 
 The main entry point is `main.py`, which provides a command-line interface to detect and translate text from images in an S3 bucket.
 
-### Usage
+#### Usage
 
 ```bash
 python main.py [--bucket BUCKET] [--source-lang SRC_LANG] [--target-lang TGT_LANG]
 ```
 
+**Parameters:**
+
 - `--bucket`: S3 bucket name (default: value from `config.py`)
 - `--source-lang`: Source language code (default: value from `config.py`)
 - `--target-lang`: Target language code (default: value from `config.py`)
 
-Example:
+**Example:**
 
 ```bash
 python main.py --bucket mybucket --source-lang es --target-lang en
@@ -57,7 +85,7 @@ python main.py --bucket mybucket --source-lang es --target-lang en
 
 If no arguments are provided, the defaults from `config.py` will be used.
 
-## Environment Variables
+### Environment Variables
 
 Before running the application, create a `.env.local` file in the project root with your Reddit API credentials:
 

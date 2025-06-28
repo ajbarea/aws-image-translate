@@ -1,164 +1,197 @@
 # AWS Image Translation Pipeline - Terraform Infrastructure
 
-This directory contains the Terraform configuration for deploying AWS infrastructure for the image translation pipeline.
+> **Infrastructure as Code for AWS AI/ML Translation Services**  
+> Automated provisioning and management of AWS resources for image text extraction, language detection, and translation pipeline using Terraform.
 
-## Architecture
+This directory contains simplified Terraform configuration for deploying AWS infrastructure for the image translation pipeline.
 
-The infrastructure includes:
+## 🏗️ What This Creates
 
-- **DynamoDB**: Table for tracking Reddit post processing state
-- **S3**: Bucket for storing images
-- **IAM**: Roles and policies for application permissions
-- **AWS Services**: Rekognition (text detection) and Translate (text translation)
+- **DynamoDB Table**: `reddit_ingest_state` for tracking Reddit post processing state
+- **S3 Bucket**: Secure storage for images with encryption, versioning, and lifecycle rules
+- **IAM Role & Policy**: Application permissions for accessing DynamoDB, S3, Rekognition, and Translate services
 
-## Prerequisites
+## 🔧 Architecture Overview
 
-1. **AWS CLI configured** with appropriate credentials
-2. **Terraform installed** (>= 1.0)
-3. **Unique S3 bucket name** (S3 bucket names are globally unique)
+```text
+┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
+│   Python App   │───▶│  S3 Bucket   │───▶│  AWS Services   │
+│                 │    │  (Images)    │    │ - Rekognition   │
+└─────────────────┘    └──────────────┘    │ - Translate     │
+         │                                  └─────────────────┘
+         ▼
+┌─────────────────┐
+│ DynamoDB Table  │
+│ (Reddit State)  │
+└─────────────────┘
+```
 
-## Quick Start
+## 📋 Prerequisites
 
-1. **Copy the example variables file:**
+1. **AWS CLI configured** with appropriate credentials (`aws configure`)
+2. **Terraform installed** (>= 1.0) - We'll use `C:\terraform\terraform.exe`
+3. **Unique S3 bucket name** (S3 bucket names must be globally unique)
+
+## 🚀 Quick Start
+
+1. **Edit the variables file:**
 
    ```bash
-   cp environments/dev/terraform.tfvars.example environments/dev/terraform.tfvars
-   ```
-
-2. **Edit the variables file:**
-
-   ```bash
-   # Edit environments/dev/terraform.tfvars
+   # Edit terraform/terraform.tfvars
    # Update s3_bucket_name to something globally unique
-   # Add your Reddit API credentials
+   # Your Reddit API credentials are already set up
    ```
 
-3. **Initialize Terraform:**
+2. **Initialize Terraform:**
 
    ```bash
    cd terraform
    terraform init
    ```
 
-4. **Plan the deployment:**
+3. **Plan the deployment:**
 
    ```bash
-   terraform plan -var-file="environments/dev/terraform.tfvars"
+   terraform plan
    ```
 
-5. **Apply the infrastructure:**
+4. **Apply the infrastructure:**
 
    ```bash
-   terraform apply -var-file="environments/dev/terraform.tfvars"
+   terraform apply
    ```
 
-## Cost Management
+## 🛠️ Using the Deploy Scripts (Recommended)
 
-### Expected Monthly Costs (Development Usage)
+Instead of running terraform commands directly, you can use the deployment scripts:
 
-- **DynamoDB**: ~$0.65/month (1 RCU/WCU) or $0.25 per million requests (on-demand)
-- **S3**: ~$0.023 per GB stored + request costs
+**Windows (PowerShell):**
+
+```powershell
+.\deploy.ps1 -Action init
+.\deploy.ps1 -Action plan
+.\deploy.ps1 -Action apply
+```
+
+**Linux/Mac/Windows Bash:**
+
+```bash
+./deploy.sh init
+./deploy.sh plan  
+./deploy.sh apply
+```
+
+## ⚙️ Configuration
+
+Your `terraform.tfvars` is already configured with:
+
+```hcl
+aws_region = "us-east-1"
+dynamodb_table_name = "reddit_ingest_state"
+s3_bucket_name = "ajbarea"  # Make sure this is globally unique!
+
+# Reddit API credentials (synchronized with .env.local)
+reddit_client_id     = "jn9y3ZKeyvpmYtIa7POWKg"
+reddit_client_secret = "So3_AYuHcyOkYugn14TXTvMEp7zYqg"
+reddit_user_agent    = "python:translate-images-bot:1.0 (by u/NoNeck4585)"
+reddit_username      = "NoNeck4585"
+reddit_password      = "YOUR_REDDIT_PASSWORD"
+```
+
+## Cost Estimation
+
+**Expected monthly costs for light development usage:**
+
+- **DynamoDB**: ~$1-5/month (pay-per-request)
+- **S3**: ~$0.10-1/month (depending on storage)
 - **Rekognition**: $1.50 per 1,000 images analyzed
-- **Translate**: $15 per million characters
+- **Translate**: $15 per million characters translated
 
-### Cost Optimization Features
+Most costs are pay-per-use, so minimal usage = minimal cost.
 
-- **S3 Lifecycle**: Automatically transitions objects to cheaper storage classes
-- **DynamoDB On-Demand**: Pay only for what you use
-- **TTL on backup tables**: Automatically delete old data
+## Security Features
 
-## Environment Management
+✅ **S3 Security:**
 
-### Development
+- Public access blocked
+- Server-side encryption (AES256)
+- Versioning enabled
+- Lifecycle rules for cost optimization
 
-```bash
-terraform workspace select dev  # or create if it doesn't exist
-terraform apply -var-file="environments/dev/terraform.tfvars"
-```
+✅ **DynamoDB Security:**
 
-### Production
+- Server-side encryption enabled
+- Point-in-time recovery enabled
 
-```bash
-terraform workspace select prod
-terraform apply -var-file="environments/prod/terraform.tfvars"
-```
+✅ **IAM Security:**
+
+- Least privilege access
+- Specific resource permissions only
 
 ## Cleanup
 
 To destroy all resources and avoid ongoing costs:
 
 ```bash
-# Destroy development environment
-terraform destroy -var-file="environments/dev/terraform.tfvars"
-
-# Or destroy specific resources
-terraform destroy -target=module.dynamodb -var-file="environments/dev/terraform.tfvars"
+terraform destroy
+# or
+./deploy.sh destroy
 ```
 
 ## File Structure
 
 ```text
 terraform/
-├── main.tf                    # Root module configuration
-├── variables.tf               # Input variables
-├── outputs.tf                 # Output values
-├── data.tf                    # Data sources
-├── modules/                   # Reusable modules
-│   ├── dynamodb/             # DynamoDB table module
-│   └── s3/                   # S3 bucket module
-└── environments/             # Environment-specific configs
-    └── dev/
-        └── terraform.tfvars  # Development variables
+├── main.tf                # Main infrastructure configuration
+├── variables.tf           # Input variables  
+├── outputs.tf            # Output values
+├── data.tf               # Data sources
+├── terraform.tfvars      # Your actual values (configured)
+├── terraform.tfvars.example  # Template for new setups
+├── deploy.sh             # Bash deployment script
+├── deploy.ps1            # PowerShell deployment script
+└── modules/              # Reusable modules
+    ├── dynamodb/         # DynamoDB table module
+    └── s3/               # S3 bucket module
 ```
-
-## Security Best Practices
-
-1. **Never commit sensitive variables** to version control
-2. **Use AWS IAM roles** instead of hardcoded credentials
-3. **Enable encryption** for all data at rest and in transit
-4. **Use least privilege** IAM policies
-5. **Store Terraform state remotely** in S3 with state locking
-
-## Remote State Setup (Recommended)
-
-For production use, store Terraform state in S3:
-
-1. Create an S3 bucket for Terraform state
-2. Create a DynamoDB table for state locking
-3. Uncomment and configure the backend in `main.tf`
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **S3 bucket name conflicts**: Choose a globally unique bucket name
-2. **AWS credentials**: Ensure AWS CLI is configured with proper permissions
-3. **Region availability**: Some services may not be available in all regions
+1. **S3 bucket name conflicts**: Choose a globally unique bucket name in `terraform.tfvars`
+2. **AWS credentials**: Ensure `aws configure` is set up with proper permissions
+3. **Terraform path**: Scripts use `C:\terraform\terraform.exe` (Windows) or system `terraform` (Linux/Mac)
 
 ### Useful Commands
 
 ```bash
+# Check what will be created/changed
+terraform plan
+
 # Check current state
 terraform show
 
-# Import existing resources
-terraform import aws_s3_bucket.images your-existing-bucket-name
-
-# Refresh state
-terraform refresh
-
-# View outputs
+# View outputs after deployment
 terraform output
+
+# Validate configuration
+terraform validate
+
+# Check current workspace and state
+terraform workspace show
+terraform state list
 ```
 
 ## Integration with Python Application
 
-After deploying, update your `config.py` file with the output values:
+After deploying, your resources will match your Python `config.py`:
 
 ```python
-# Use terraform output to get these values
-DYNAMODB_TABLE_NAME = "reddit-ingest-state-dev"  # from terraform output
-S3_IMAGE_BUCKET = "your-unique-bucket-name-dev"  # from terraform output
+# These values are already synchronized:
+DYNAMODB_TABLE_NAME = "reddit_ingest_state"  # matches terraform output
+S3_IMAGE_BUCKET = "ajbarea"  # matches terraform output
+AWS_REGION = "us-east-1"  # matches terraform configuration
 ```
 
-Or use the Terraform outputs directly in your CI/CD pipeline.
+The infrastructure is designed to work seamlessly with your existing Python application configuration.
