@@ -10,5 +10,9 @@
   },
   "terminal.integrated.env.osx": {
     "PYTHONPATH": "${workspaceFolder}"
+  },
+  "sonarlint.connectedMode.project": {
+    "connectionId": "ajbarea",
+    "projectKey": "ajbarea_aws-image-translate"
   }
 }

@@ -98,6 +98,22 @@ def delete_table_if_exists(table_name):
         print(f"Table '{table_name}' does not exist.")
 
 
+def print_table_items(table_name):
+    """Prints all items in the specified DynamoDB table."""
+    dynamodb = get_dynamodb_resource()
+    table = dynamodb.Table(table_name)  # type: ignore[attr-defined]
+    try:
+        response = table.scan()
+        items = response.get("Items", [])
+        print(f"\nCurrent items in table '{table_name}':")
+        if not items:
+            print("  (No items found)")
+        for item in items:
+            print(f"  {item}")
+    except Exception as e:
+        print(f"Error scanning table {table_name}: {e}")
+
+
 if __name__ == "__main__":
     import sys
 
@@ -126,3 +142,6 @@ if __name__ == "__main__":
     print(f"Getting last_processed_post_id for {TEST_SUBREDDIT_KEY} after update...")
     post_id = get_last_processed_post_id(TEST_TABLE_NAME, TEST_SUBREDDIT_KEY)
     print(f"Updated last_processed_post_id: {post_id}")
+    print_table_items(TEST_TABLE_NAME)
+    print("Deleting table after test...")
+    delete_table_if_exists(TEST_TABLE_NAME)

@@ -5,6 +5,7 @@ Prototyping an image translation system using AWS services.
 ## Documentation
 
 For a comprehensive overview of the AWS-based Reddit image processing pipeline, see [src/reddit-aws-pipeline-docs.md](src/reddit-aws-pipeline-docs.md).
+For a demonstration of the AWS Translation Pipeline, see [aws-demos/README.md](aws-demos/README.md).
 
 ## AWS Credentials Setup
 
@@ -67,6 +68,35 @@ REDDIT_USER_AGENT=python:translate-images-bot:1.0 (by u/yourusername)
 ```
 
 Replace the values with your own Reddit API credentials. This file is required for the application to access Reddit APIs.
+
+## Infrastructure Management
+
+This project includes Terraform configuration for managing AWS infrastructure. See [terraform/README.md](terraform/README.md) for detailed instructions.
+
+### Quick Infrastructure Setup
+
+1. **Initialize and deploy infrastructure:**
+
+   ```bash
+   # Windows (PowerShell)
+   .\terraform\deploy.ps1 -Action init
+   .\terraform\deploy.ps1 -Action apply
+   
+   # Linux/Mac (Bash)
+   ./terraform/deploy.sh init
+   ./terraform/deploy.sh apply
+   ```
+
+2. **Clean up resources to avoid costs:**
+
+   ```bash
+   # Using Terraform
+   .\terraform\deploy.ps1 -Action destroy
+   
+   # Using cleanup script
+   python cleanup.py --dry-run    # Preview what will be deleted
+   python cleanup.py              # Actually delete resources
+   ```
 
 ## Testing & Coverage
 
