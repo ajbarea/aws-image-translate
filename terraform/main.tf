@@ -2,14 +2,14 @@
 
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
   }
-  
+
   # Uncomment and configure for remote state storage
   # backend "s3" {
   #   bucket = "your-terraform-state-bucket"
@@ -21,7 +21,7 @@ terraform {
 # Configure the AWS Provider
 provider "aws" {
   region = var.aws_region
-  
+
   default_tags {
     tags = {
       Project     = var.project_name
@@ -34,25 +34,46 @@ provider "aws" {
 # DynamoDB Table for Reddit state tracking
 module "dynamodb" {
   source = "./modules/dynamodb"
-  
-  table_name           = var.dynamodb_table_name
-  enable_backup_table  = false  # Set to true if you want backup table
-  billing_mode        = "PAY_PER_REQUEST"  # or "PROVISIONED"
+
+  table_name          = var.dynamodb_table_name
+  enable_backup_table = false             # Set to true if you want backup table
+  billing_mode        = "PAY_PER_REQUEST" # or "PROVISIONED"
 }
 
 # S3 Bucket for image storage
 module "s3" {
   source = "./modules/s3"
-  
-  bucket_name        = var.s3_bucket_name
-  enable_lifecycle   = true   # Enable cost optimization
-  enable_versioning  = true   # Enable object versioning
+
+  bucket_name       = var.s3_bucket_name
+  enable_lifecycle  = true # Enable cost optimization
+  enable_versioning = true # Enable object versioning
+  allowed_origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+  ]
+}
+
+# Cognito for frontend authentication
+module "cognito" {
+  source = "./modules/cognito"
+
+  project_name  = var.project_name
+  s3_bucket_arn = module.s3.bucket_arn
+}
+
+# Lambda for image processing
+module "lambda" {
+  source = "./modules/lambda"
+
+  project_name   = var.project_name
+  s3_bucket_name = module.s3.bucket_name
+  s3_bucket_arn  = module.s3.bucket_arn
 }
 
 # IAM roles and policies for the application
 resource "aws_iam_role" "app_role" {
   name = "image-translate-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -70,7 +91,7 @@ resource "aws_iam_role" "app_role" {
 resource "aws_iam_role_policy" "app_policy" {
   name = "image-translate-policy"
   role = aws_iam_role.app_role.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

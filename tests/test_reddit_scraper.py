@@ -1,8 +1,10 @@
-from unittest.mock import MagicMock, patch
-from src import reddit_scraper
 import datetime
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
+
+from src import reddit_scraper
 
 
 class DummySubmission:
@@ -106,16 +108,12 @@ def test_create_reddit_credentials_success():
     assert creds["client_id"] == "test_id"
     assert creds["client_secret"] == "test_secret"
     assert creds["user_agent"] == "test_agent"
-    assert creds["username"] == "test_user"
-    assert creds["password"] == "test_pass"
 
 
 @patch.dict(os.environ, {}, clear=True)  # Clear all environment variables
 @patch("src.reddit_scraper.REDDIT_CLIENT_ID", None)
 @patch("src.reddit_scraper.REDDIT_CLIENT_SECRET", None)
 @patch("src.reddit_scraper.REDDIT_USER_AGENT", None)
-@patch("src.reddit_scraper.REDDIT_USERNAME", None)
-@patch("src.reddit_scraper.REDDIT_PASSWORD", None)
 def test_create_reddit_credentials_missing_creds():
     with pytest.raises(ValueError) as exc_info:
         reddit_scraper.create_reddit_credentials()
@@ -129,8 +127,6 @@ def test_init_reddit_client_success_and_failure(monkeypatch):
             "client_id": "test_id",
             "client_secret": "test_secret",
             "user_agent": "test_agent",
-            "username": "test_user",
-            "password": "test_pass",
         }
     )
     monkeypatch.setattr(reddit_scraper, "create_reddit_credentials", mock_create_creds)
@@ -139,8 +135,12 @@ def test_init_reddit_client_success_and_failure(monkeypatch):
     class DummyReddit:
         def __init__(self, *args, **kwargs):
             self.read_only = False
-            self.user = MagicMock()
-            self.user.me = MagicMock()
+
+        def subreddit(self, name):
+            class DummySubreddit:
+                display_name = name
+
+            return DummySubreddit()
 
     monkeypatch.setattr(reddit_scraper.praw, "Reddit", lambda *a, **kw: DummyReddit())
     client = reddit_scraper.init_reddit_client()

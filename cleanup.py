@@ -14,9 +14,10 @@ Examples:
 """
 
 import argparse
-import boto3
 import sys
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+import boto3
 from botocore.exceptions import ClientError
 
 

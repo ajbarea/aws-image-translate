@@ -1,8 +1,5 @@
 boto3
 praw
 requests
-pytest
-pytest-cov
-moto
 python-dotenv
 beautifulsoup4

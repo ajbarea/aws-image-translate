@@ -1,7 +1,26 @@
 # AWS Image Translation Pipeline - Terraform Infrastructure
 
-> **Infrastructure as Code for AWS AI/ML Translation Services**  
+> **Infrastructure as Code for AWS AI/ML Translation Services**
 > Automated provisioning and management of AWS resources for image text extraction, language detection, and translation pipeline using Terraform.
+
+This directory contains simplified Terraform configuration for deploying AWS infrastructure for the image translation pipeline.
+
+## Troubleshooting
+
+**Common Setup Issues:**
+
+1. **S3 bucket name conflicts**: Choose a globally unique bucket name in `terraform.tfvars`
+2. **AWS credentials**: Ensure `aws configure` has proper permissions for creating IAM roles, DynamoDB tables, and S3 buckets
+3. **Terraform not found**: Install Terraform from [terraform.io](https://terraform.io) and ensure it's in your PATH
+
+**Required AWS Permissions:**
+
+Your AWS credentials need the following permissions:
+
+- `s3:CreateBucket`, `s3:PutBucketPolicy`, `s3:PutBucketEncryption`
+- `dynamodb:CreateTable`, `dynamodb:DescribeTable`
+- `iam:CreateRole`, `iam:CreatePolicy`, `iam:AttachRolePolicy`
+- `lambda:CreateFunction` (if deploying Lambda functions) of AWS resources for image text extraction, language detection, and translation pipeline using Terraform.
 
 This directory contains simplified Terraform configuration for deploying AWS infrastructure for the image translation pipeline.
 
@@ -29,8 +48,9 @@ This directory contains simplified Terraform configuration for deploying AWS inf
 ## 📋 Prerequisites
 
 1. **AWS CLI configured** with appropriate credentials (`aws configure`)
-2. **Terraform installed** (>= 1.0) - We'll use `C:\terraform\terraform.exe`
+2. **Terraform installed** (>= 1.0) - Available at [terraform.io](https://terraform.io)
 3. **Unique S3 bucket name** (S3 bucket names must be globally unique)
+4. **Python 3.8+** for running the cleanup script (actively tested with Python 3.13.2)
 
 ## 🚀 Quick Start
 
@@ -77,37 +97,30 @@ Instead of running terraform commands directly, you can use the deployment scrip
 
 ```bash
 ./deploy.sh init
-./deploy.sh plan  
+./deploy.sh plan
 ./deploy.sh apply
 ```
 
 ## ⚙️ Configuration
 
-Your `terraform.tfvars` is already configured with:
+Your `terraform.tfvars` should be configured with:
 
 ```hcl
 aws_region = "us-east-1"
 dynamodb_table_name = "reddit_ingest_state"
-s3_bucket_name = "ajbarea"  # Make sure this is globally unique!
+s3_bucket_name = "your-globally-unique-bucket-name"  # MUST be globally unique!
 
 # Reddit API credentials (synchronized with .env.local)
-reddit_client_id     = "jn9y3ZKeyvpmYtIa7POWKg"
-reddit_client_secret = "So3_AYuHcyOkYugn14TXTvMEp7zYqg"
-reddit_user_agent    = "python:translate-images-bot:1.0 (by u/NoNeck4585)"
-reddit_username      = "NoNeck4585"
-reddit_password      = "YOUR_REDDIT_PASSWORD"
+reddit_client_id     = "your_reddit_client_id"
+reddit_client_secret = "your_reddit_client_secret"
+reddit_user_agent    = "python:translate-images-bot:1.0 (by u/your_username)"
 ```
 
-## Cost Estimation
+**Important:**
 
-**Expected monthly costs for light development usage:**
-
-- **DynamoDB**: ~$1-5/month (pay-per-request)
-- **S3**: ~$0.10-1/month (depending on storage)
-- **Rekognition**: $1.50 per 1,000 images analyzed
-- **Translate**: $15 per million characters translated
-
-Most costs are pay-per-use, so minimal usage = minimal cost.
+- S3 bucket names must be globally unique across all AWS accounts
+- Reddit credentials should match those in your `.env.local` file
+- These values are synchronized with your Python `config.py` file
 
 ## Security Features
 
@@ -143,7 +156,7 @@ terraform destroy
 ```text
 terraform/
 ├── main.tf                # Main infrastructure configuration
-├── variables.tf           # Input variables  
+├── variables.tf           # Input variables
 ├── outputs.tf            # Output values
 ├── data.tf               # Data sources
 ├── terraform.tfvars      # Your actual values (configured)
@@ -155,13 +168,7 @@ terraform/
     └── s3/               # S3 bucket module
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-1. **S3 bucket name conflicts**: Choose a globally unique bucket name in `terraform.tfvars`
-2. **AWS credentials**: Ensure `aws configure` is set up with proper permissions
-3. **Terraform path**: Scripts use `C:\terraform\terraform.exe` (Windows) or system `terraform` (Linux/Mac)
+## Additional Resources
 
 ### Useful Commands
 
@@ -188,10 +195,15 @@ terraform state list
 After deploying, your resources will match your Python `config.py`:
 
 ```python
-# These values are already synchronized:
-DYNAMODB_TABLE_NAME = "reddit_ingest_state"
-S3_IMAGE_BUCKET = "ajbarea"
-AWS_REGION = "us-east-1"
+# These values should be synchronized between terraform.tfvars and config.py:
+S3_IMAGE_BUCKET = "your-globally-unique-bucket-name"  # From terraform.tfvars
+DYNAMODB_TABLE_NAME = "reddit_ingest_state"          # From terraform.tfvars
+AWS_REGION = "us-east-1"                             # From terraform.tfvars
+
+# Reddit API credentials are managed via environment variables
+REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
+REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
+REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT")
 ```
 
-The infrastructure is designed to work seamlessly with your existing Python application configuration.
+The infrastructure is designed to work seamlessly with your existing Python application configuration, including enhanced media processing and subreddit scraping capabilities.

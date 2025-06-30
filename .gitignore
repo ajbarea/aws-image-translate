@@ -174,9 +174,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#  and can be added to the global gitignore or merged into this file. However, if you prefer,
 #  you could uncomment the following to ignore the enitre vscode folder
 # .vscode/
 
@@ -194,6 +194,12 @@ cython_debug/
 .cursorindexingignore
 .github/prompts/
 .env.local
+
+# Frontend configuration with sensitive AWS credentials
+frontend/js/config.js
+
+# AWS credentials
+.aws/
 
 # Terraform
 # Local .terraform directories
@@ -231,4 +237,3 @@ terraform.rc
 # Lock file (uncomment if you want to ignore it)
 .terraform.lock.hcl
 terraform/tfplan
-subreddit-scraper/

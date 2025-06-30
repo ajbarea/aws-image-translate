@@ -1,15 +1,17 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from src.enhanced_media_utils import (
-    validate_url,
-    get_file_extension,
-    is_supported_extension,
-    get_file_type,
     MediaError,
-    parse_html_for_media,
-    get_accept_header,
     enhanced_download_media,
+    get_accept_header,
+    get_file_extension,
+    get_file_type,
     get_supported_extensions,
+    is_supported_extension,
+    parse_html_for_media,
+    validate_url,
 )
 
 
@@ -27,8 +29,8 @@ def test_get_file_extension():
     assert get_file_extension("https://example.com/image.jpeg") == "jpg"
     assert get_file_extension("https://example.com/image.png") == "png"
     assert get_file_extension("https://example.com/video.mp4") == "mp4"
-    assert get_file_extension("https://example.com/image") == "jpg"  # Default
-    assert get_file_extension("") == "jpg"  # Default
+    assert get_file_extension("https://example.com/image") == "jpg"
+    assert get_file_extension("") == "jpg"
     with pytest.raises(TypeError):
         get_file_extension(None)
 

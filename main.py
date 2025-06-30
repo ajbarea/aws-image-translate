@@ -1,10 +1,12 @@
 import argparse
-import boto3
 from typing import List, Optional
-from src.amazon_rekognition import detect_text_from_s3
-from src.amazon_translate import translate_text
-from src.amazon_s3 import list_images_in_bucket
+
+import boto3
+
 from config import S3_IMAGE_BUCKET, SOURCE_LANGUAGE_CODE, TARGET_LANGUAGE_CODE
+from src.amazon_rekognition import detect_text_from_s3
+from src.amazon_s3 import list_images_in_bucket
+from src.amazon_translate import translate_text
 
 
 def s3_object_exists(bucket, key):

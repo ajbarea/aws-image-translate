@@ -16,3 +16,9 @@ variable "enable_versioning" {
   type        = bool
   default     = true
 }
+
+variable "allowed_origins" {
+  description = "List of allowed origins for CORS"
+  type        = list(string)
+  default     = ["http://localhost:8000"]
+}

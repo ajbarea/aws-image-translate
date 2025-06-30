@@ -1,21 +1,23 @@
-import requests
 import io
-import os
-from urllib.parse import urlparse
 import logging
+import os
 import time
-from src.amazon_s3 import upload_fileobj_to_s3
-from src.reddit_scraper import init_reddit_client, get_new_image_posts_since
+from urllib.parse import urlparse
+
+import requests
+
+from config import (
+    DYNAMODB_TABLE_NAME,
+    MEDIA_PROCESSING_CONFIG,
+    REDDIT_SCRAPING_CONFIG,
+    S3_IMAGE_BUCKET,
+)
 from src.amazon_dynamodb import (
     get_last_processed_post_id,
     update_last_processed_post_id,
 )
-from config import (
-    S3_IMAGE_BUCKET,
-    DYNAMODB_TABLE_NAME,
-    MEDIA_PROCESSING_CONFIG,
-    REDDIT_SCRAPING_CONFIG,
-)
+from src.amazon_s3 import upload_fileobj_to_s3
+from src.reddit_scraper import get_new_image_posts_since, init_reddit_client
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory=$true)]
     [ValidateSet("init", "plan", "apply", "destroy", "output")]
     [string]$Action,
-    
+
     [switch]$Help
 )
 
@@ -30,14 +30,14 @@ Examples:
 
 function Write-Log {
     param([string]$Message, [string]$Level = "INFO")
-    
+
     $color = switch ($Level) {
         "INFO" { "Cyan" }
         "SUCCESS" { "Green" }
         "WARNING" { "Yellow" }
         "ERROR" { "Red" }
     }
-    
+
     Write-Host "[$Level] $Message" -ForegroundColor $color
 }
 
@@ -71,7 +71,7 @@ function Test-Requirements {
         Write-Log "Terraform directory not found" "ERROR"
         exit 1
     }
-    
+
     # Check if terraform.tfvars exists
     if (-not (Test-Path "terraform\terraform.tfvars")) {
         Write-Log "terraform.tfvars not found. Make sure to create it and set your values." "WARNING"
@@ -100,7 +100,7 @@ function Invoke-TerraformApply {
     Write-Log "Applying Terraform changes..."
     Set-Location terraform
     & "C:\terraform\terraform.exe" apply
-    
+
     if ($LASTEXITCODE -eq 0) {
         Write-Log "Infrastructure deployed successfully!" "SUCCESS"
         Write-Log "Run '.\deploy-simple.ps1 -Action output' to see the resource details." "INFO"
@@ -110,16 +110,16 @@ function Invoke-TerraformApply {
 function Invoke-TerraformDestroy {
     Write-Log "This will destroy ALL infrastructure!" "WARNING"
     $confirm = Read-Host "Are you sure you want to continue? (type 'yes' to confirm)"
-    
+
     if ($confirm -ne "yes") {
         Write-Log "Deployment cancelled." "INFO"
         exit 0
     }
-    
+
     Write-Log "Destroying Terraform infrastructure..."
     Set-Location terraform
     & "C:\terraform\terraform.exe" destroy
-    
+
     if ($LASTEXITCODE -eq 0) {
         Write-Log "Infrastructure destroyed successfully!" "SUCCESS"
     }

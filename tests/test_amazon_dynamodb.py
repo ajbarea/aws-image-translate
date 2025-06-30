@@ -1,15 +1,16 @@
+import os
+
+import boto3
 import pytest
 from moto import mock_aws as mock_dynamodb
-import boto3
-import os
-from config import AWS_REGION
 
+from config import AWS_REGION
 from src.amazon_dynamodb import (
-    get_last_processed_post_id,
-    update_last_processed_post_id,
-    table_exists,
     create_table_if_not_exists,
     delete_table_if_exists,
+    get_last_processed_post_id,
+    table_exists,
+    update_last_processed_post_id,
 )
 
 TEST_DDB_TABLE_NAME = "test_reddit_ingest_state"

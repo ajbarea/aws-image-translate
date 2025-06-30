@@ -36,8 +36,6 @@ jobs:
           REDDIT_CLIENT_ID: test_client_id
           REDDIT_CLIENT_SECRET: test_client_secret
           REDDIT_USER_AGENT: test_user_agent
-          REDDIT_USERNAME: test_username
-          REDDIT_PASSWORD: test_password
           DYNAMODB_TABLE_NAME: test_table
           SOURCE_LANGUAGE_CODE: es
           TARGET_LANGUAGE_CODE: en

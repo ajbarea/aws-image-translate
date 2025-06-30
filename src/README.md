@@ -1,6 +1,6 @@
 # Reddit AWS Processing Pipeline
 
-> **Comprehensive AWS-Based Reddit Content Analysis System**  
+> **Comprehensive AWS-Based Reddit Content Analysis System**
 > Advanced pipeline for automated Reddit image processing, text extraction, language detection, and multi-language translation using AWS AI/ML services.
 
 ## 🌟 Overview
@@ -10,7 +10,7 @@ This project provides a scalable solution for collecting Reddit posts containing
 ### 🏗️ Architecture Components
 
 - **Amazon DynamoDB**: State management and tracking of processed Reddit posts
-- **Amazon S3**: Secure storage for downloaded images and processed content  
+- **Amazon S3**: Secure storage for downloaded images and processed content
 - **Amazon Rekognition**: AI-powered text detection and extraction from images (OCR)
 - **Amazon Comprehend**: Natural language processing for intelligent language detection
 - **Amazon Translate**: Multi-language text translation supporting 75+ languages
@@ -21,52 +21,98 @@ This project provides a scalable solution for collecting Reddit posts containing
 
 ### Prerequisites
 
-- **AWS Account** with appropriate IAM permissions for AI/ML services
-- **Python 3.8+** runtime environment
+- **AWS Account** with appropriate IAM permissions for AI/ML services (Rekognition, Translate, Comprehend, S3, DynamoDB)
+- **Python 3.8+** runtime environment (actively tested with Python 3.13.2)
 - **AWS CLI** configured with programmatic access credentials
-- **Reddit API** credentials for content access
+- **Reddit API** credentials for content access (client ID, secret, user agent)
 - **Required Python packages** (see Installation section)
 
 ### Installation
 
 ```bash
+# Create and activate virtual environment
+python -m venv venv
+
+# Activate on Windows
+venv\Scripts\activate
+
+# Activate on Linux/Mac
+source venv/bin/activate
+
+# Install core dependencies
 pip install -r requirements.txt
+
+# Install development dependencies (testing, linting, etc.)
+pip install -r requirements-dev.txt
 ```
 
-**Required packages include:**
+**Core Dependencies (`requirements.txt`):**
 
 - `boto3` - AWS SDK for Python (AWS service integration)
 - `praw` - Python Reddit API Wrapper (Reddit content access)
 - `requests` - HTTP library for web requests
-- `pytest` - Testing framework for unit tests
-- `pytest-cov` - Coverage plugin for test metrics
-- `moto` - AWS services mocking for testing
 - `python-dotenv` - Environment variable management
+- `beautifulsoup4` - HTML parsing utilities
+
+**Development Dependencies (`requirements-dev.txt`):**
+
+- `pytest>=8.0.0` - Testing framework for comprehensive unit tests
+- `pytest-cov>=4.0.0` - Coverage plugin for test metrics and reporting
+- `moto>=4.2.0` - AWS services mocking for testing without real AWS resources
+- `black>=23.0.0` - Code formatting with modern Python support
+- `flake8>=6.0.0` - Code linting with customizable rules (configured in setup.cfg)
+- `isort>=5.12.0` - Import sorting for clean code organization
+- `mypy>=1.0.0` - Type checking for better code quality and error detection
+- `pre-commit>=3.0.0` - Git hooks for automated code quality checks
 
 ### Environment Configuration
 
-Create a `.env` file or configure environment variables:
+Create a `.env.local` file in the project root with your credentials:
 
 ```bash
+# Reddit API credentials
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
+REDDIT_USER_AGENT=python:translate-images-bot:1.0 (by u/yourusername)
+
+# Optional: Override default AWS settings
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
+DYNAMODB_TABLE_NAME=reddit_ingest_state
 ```
+
+**Alternative AWS credential methods:**
+
+- AWS CLI: `aws configure`
+- IAM roles (recommended for EC2/Lambda)
+- AWS credential files in `~/.aws/`
 
 ### Basic Usage
 
 ```python
-from image_processor import process_new_images_from_reddit
+from src.image_processor import process_new_images_from_reddit
 
 # Process images from a subreddit
 result = process_new_images_from_reddit(
-    s3_bucket_name="my-reddit-images",
+    s3_bucket_name="ajbarea-aws-translate",  # Your S3 bucket
     dynamodb_table_name="reddit_ingest_state",
     subreddit_name="translator",
-    reddit_fetch_limit=50
+    reddit_fetch_limit=25
 )
 
 print(f"Processed: {result['processed_count']} images")
+print(f"Failed: {result['failed_count']} images")
+```
+
+**Using the CLI:**
+
+```bash
+# Process images with default settings
+python main.py
+
+# Process with custom parameters
+python main.py --bucket my-bucket --source-lang es --target-lang en
 ```
 
 ## 📚 Module Documentation
@@ -460,3 +506,99 @@ When contributing to this project:
 ## 📄 License
 
 This project is provided as-is for educational and development purposes. Ensure compliance with Reddit's API terms of service and AWS acceptable use policies.
+
+## 🔧 Current Project Configuration
+
+This project is pre-configured with the following default settings (from `config.py`):
+
+### AWS Configuration
+
+- **S3 Bucket**: `ajbarea-aws-translate`
+- **AWS Region**: `us-east-1`
+- **DynamoDB Table**: `reddit_ingest_state`
+
+### Language Settings
+
+- **Source Language**: Spanish (`es`)
+- **Target Language**: English (`en`)
+- **Supported Languages**: English, Spanish, French, German, Italian, Portuguese, Chinese, Japanese, Korean
+
+### Reddit Configuration
+
+- **Default Subreddit**: `translator`
+- **Additional Subreddits**: `food`
+- **Post Fetch Limit**: 25 posts per run
+- **Supported Formats**: JPG, JPEG, PNG, GIF, WebP
+
+### Media Processing
+
+- **Download Timeout**: 10 seconds
+- **Max Retries**: 3 attempts
+- **Local Download Folder**: `data/downloads`
+
+**To customize these settings:**
+
+1. Edit `config.py` for application defaults
+2. Use environment variables in `.env.local` to override
+3. Pass parameters to CLI or functions directly
+
+## 🧪 Testing and Quality Assurance
+
+### Test Suite Overview
+
+The project includes 64 comprehensive unit tests covering all major components with full AWS service mocking:
+
+- **Amazon DynamoDB** (6 tests): State management, table operations, error handling
+- **Amazon Rekognition** (2 tests): Text detection functionality, API response handling
+- **Amazon S3** (6 tests): File upload/download, listing operations, error conditions
+- **Amazon Translate** (2 tests): Multi-language translation services, API integration
+- **Enhanced Media Utils** (10 tests): Media processing utilities, error handling
+- **Image Processor** (7 tests): End-to-end Reddit image processing pipeline
+- **Main CLI** (6 tests): Command-line interface functionality and argument parsing
+- **Reddit Scraper** (13 tests): Reddit API integration, subreddit processing
+- **Additional Integration Tests** (12 tests): Cross-module functionality testing
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=src --cov-report=html
+
+# Run specific test modules
+pytest tests/test_amazon_rekognition.py
+pytest tests/test_reddit_scraper.py
+
+# Run tests with verbose output
+pytest -v
+```
+
+### Test Configuration
+
+Tests are configured via `pyproject.toml`:
+
+```toml
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:botocore.*",
+    "ignore::DeprecationWarning:boto3.*",
+]
+addopts = "-v --tb=short"
+testpaths = ["tests"]
+```
+
+### Mocking Strategy
+
+- **AWS Services**: Uses `moto` library to mock AWS API calls
+- **Reddit API**: Uses custom mocks to simulate Reddit responses
+- **HTTP Requests**: Uses `responses` library for HTTP request mocking
+
+### Quality Tools
+
+- **Code Formatting**: `black` for consistent code style
+- **Linting**: `flake8` with custom configuration in `setup.cfg`
+- **Import Sorting**: `isort` for organized imports
+- **Type Checking**: `mypy` for static type analysis
+- **Pre-commit Hooks**: Automated quality checks before commits

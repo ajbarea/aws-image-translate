@@ -6,20 +6,20 @@ and fetch new image posts since a given post ID using the PRAW library.
 Enhanced with comprehensive media detection and authentication patterns.
 """
 
-import re
 import logging
-import praw
 import os
-from typing import Optional, Set, List, Dict, Tuple
+import re
 from pathlib import Path
+from typing import Dict, List, Optional, Set
+
+import praw
 from dotenv import load_dotenv
+
 from config import (
     REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET,
-    REDDIT_USER_AGENT,
-    REDDIT_USERNAME,
-    REDDIT_PASSWORD,
     REDDIT_SCRAPING_CONFIG,
+    REDDIT_USER_AGENT,
 )
 
 logging.basicConfig(
@@ -48,7 +48,7 @@ def create_reddit_credentials() -> Dict[str, str]:
     """Load Reddit API credentials from environment variables with comprehensive validation.
 
     Returns:
-        Dictionary containing Reddit API credentials
+        Dictionary containing Reddit API credentials for read-only access
 
     Raises:
         ValueError: If any required credentials are missing
@@ -59,8 +59,6 @@ def create_reddit_credentials() -> Dict[str, str]:
             "client_id": "test_id",
             "client_secret": "test_secret",
             "user_agent": "test_agent",
-            "username": "test_user",
-            "password": "test_pass",  # NOSONAR
         }
 
     # Load environment variables from .env.local if it exists
@@ -72,8 +70,6 @@ def create_reddit_credentials() -> Dict[str, str]:
         "client_id": REDDIT_CLIENT_ID,
         "client_secret": REDDIT_CLIENT_SECRET,
         "user_agent": REDDIT_USER_AGENT,
-        "username": REDDIT_USERNAME,
-        "password": REDDIT_PASSWORD,
     }
 
     # Check if all credentials are loaded
@@ -106,14 +102,12 @@ def init_reddit_client() -> "praw.Reddit | None":
             client_id=creds["client_id"],
             client_secret=creds["client_secret"],
             user_agent=creds["user_agent"],
-            username=creds["username"],
-            password=creds["password"],
             check_for_async=False,
         )
         reddit.read_only = True
 
-        # Test the connection
-        reddit.user.me()
+        # Test the connection with a simple API call
+        _ = reddit.subreddit("test").display_name
         logging.info("✅ Reddit client initialized successfully")
         return reddit
 

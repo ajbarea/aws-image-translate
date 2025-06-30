@@ -1,16 +1,16 @@
-import pytest
-from unittest.mock import patch, MagicMock, ANY
 import io
-import requests
 import logging
+from unittest.mock import ANY, MagicMock, patch
 
+import requests
+
+from config import DYNAMODB_TABLE_NAME, S3_IMAGE_BUCKET
 from src.image_processor import (
     download_image,
     generate_s3_object_name,
-    process_new_images_from_reddit,
     lambda_handler,
+    process_new_images_from_reddit,
 )
-from config import S3_IMAGE_BUCKET, DYNAMODB_TABLE_NAME
 
 # Test data
 TEST_URL_JPG = "http://example.com/image.jpg"

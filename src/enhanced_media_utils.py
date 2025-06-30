@@ -4,14 +4,16 @@ This module provides advanced media handling capabilities inspired by the subred
 including better file type detection, HTML parsing for media URLs, and robust download handling.
 """
 
-import re
+import logging
 import os
+import re
 from pathlib import Path
-import requests
 from typing import Dict, Optional, Tuple, Union
 from urllib.parse import urlparse
+
+import requests
 from bs4 import BeautifulSoup, Tag
-import logging
+
 from config import MEDIA_PROCESSING_CONFIG
 
 # Type aliases for better readability
@@ -49,7 +51,7 @@ class MediaError(Exception):
         super().__init__(message)
 
 
-def validate_url(url: URLString) -> bool:
+def validate_url(url: Optional[str]) -> bool:
     """Validate if a string is a properly formatted URL.
 
     Args:
@@ -70,7 +72,7 @@ def validate_url(url: URLString) -> bool:
     return bool(URL_PATTERN.match(url.strip()))
 
 
-def get_file_extension(url: URLString) -> str:
+def get_file_extension(url: Optional[str]) -> str:
     """Determine file extension from URL with comprehensive validation.
 
     Args:
@@ -142,7 +144,7 @@ def _fallback_extension_extraction(url: str) -> str:
         return DEFAULT_EXTENSION
 
 
-def is_supported_extension(extension: str) -> bool:
+def is_supported_extension(extension: Optional[str]) -> bool:
     """Check if a file extension is supported.
 
     Args:
@@ -174,7 +176,7 @@ def is_supported_extension(extension: str) -> bool:
     return normalized_ext in SUPPORTED_EXTENSIONS
 
 
-def get_file_type(extension: str) -> Optional[str]:
+def get_file_type(extension: Optional[str]) -> Optional[str]:
     """Get file type category (image/video) for an extension.
 
     Args:

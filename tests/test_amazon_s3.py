@@ -1,13 +1,8 @@
-from unittest.mock import patch, MagicMock, mock_open
-import pytest  # Using pytest for fixtures like tmp_path if needed, but primarily unittest.mock
-import os
 import io
+from unittest.mock import MagicMock, mock_open, patch
 
-# Assuming AWS_REGION is imported by src.amazon_s3 and used, so it's part of the environment for the module
+from config import AWS_REGION
 from src.amazon_s3 import list_images_in_bucket, upload_file_to_s3, upload_fileobj_to_s3
-from config import (
-    AWS_REGION,
-)  # Mocking will handle actual calls, but good to be aware of imports
 
 
 # Existing tests for list_images_in_bucket

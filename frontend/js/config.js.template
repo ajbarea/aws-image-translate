@@ -1,0 +1,17 @@
+// AWS Configuration Template
+// Copy this to config.js and replace with your actual values from Terraform output
+
+const AWS_CONFIG = {
+  region: "YOUR_AWS_REGION",
+  userPoolId: "YOUR_USER_POOL_ID",
+  userPoolWebClientId: "YOUR_CLIENT_ID",
+  identityPoolId: "YOUR_IDENTITY_POOL_ID",
+  bucketName: "YOUR_S3_BUCKET",
+  apiGatewayUrl: "YOUR_API_GATEWAY_URL",
+};
+
+// Initialize AWS SDK
+AWS.config.region = AWS_CONFIG.region;
+
+// Export configuration
+export { AWS_CONFIG };

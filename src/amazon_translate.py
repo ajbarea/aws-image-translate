@@ -1,6 +1,8 @@
-import boto3
-from config import AWS_REGION
 import logging
+
+import boto3
+
+from config import AWS_REGION
 
 logging.basicConfig(level=logging.INFO)
 

@@ -72,7 +72,7 @@ check_requirements() {
         log_error "Terraform directory not found: $TERRAFORM_DIR"
         exit 1
     fi
-    
+
     # Check if terraform.tfvars exists
     if [ ! -f "$TERRAFORM_DIR/terraform.tfvars" ]; then
         log_warning "terraform.tfvars not found. Make sure to create it and set your values."
@@ -96,7 +96,7 @@ apply_terraform() {
     log_info "Applying Terraform changes..."
     cd "$TERRAFORM_DIR"
     "$TERRAFORM_CMD" apply
-    
+
     if [ $? -eq 0 ]; then
         log_success "Infrastructure deployed successfully!"
         log_info "Run '$0 output' to see the resource details."
@@ -106,16 +106,16 @@ apply_terraform() {
 destroy_terraform() {
     log_warning "This will destroy ALL infrastructure!"
     read -p "Are you sure you want to continue? (type 'yes' to confirm): " confirm
-    
+
     if [ "$confirm" != "yes" ]; then
         log_info "Deployment cancelled."
         exit 0
     fi
-    
+
     log_info "Destroying Terraform infrastructure..."
     cd "$TERRAFORM_DIR"
     "$TERRAFORM_CMD" destroy
-    
+
     if [ $? -eq 0 ]; then
         log_success "Infrastructure destroyed successfully!"
     fi

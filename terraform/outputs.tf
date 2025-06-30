@@ -44,5 +44,10 @@ output "integration_config" {
     DYNAMODB_TABLE_NAME = module.dynamodb.table_name
     S3_IMAGE_BUCKET     = module.s3.bucket_name
     AWS_REGION          = var.aws_region
+    USER_POOL_ID        = module.cognito.user_pool_id
+    USER_POOL_CLIENT_ID = module.cognito.user_pool_client_id
+    IDENTITY_POOL_ID    = module.cognito.identity_pool_id
+    LAMBDA_FUNCTION_ARN = module.lambda.lambda_function_arn
+    API_GATEWAY_URL     = module.lambda.api_gateway_invoke_url
   }
 }

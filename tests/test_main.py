@@ -1,6 +1,6 @@
-import pytest
-from unittest.mock import patch, MagicMock
-from main import process_image, process_all_images
+from unittest.mock import MagicMock
+
+from main import process_all_images, process_image
 
 
 def test_process_image_detects_and_translates(monkeypatch):
@@ -114,8 +114,8 @@ def test_cli_default_args(monkeypatch):
     monkeypatch.setattr("main.main", mock_main)
     test_args = ["prog"]
     monkeypatch.setattr("sys.argv", test_args)
-    from main import cli
     from config import S3_IMAGE_BUCKET, SOURCE_LANGUAGE_CODE, TARGET_LANGUAGE_CODE
+    from main import cli
 
     cli()
 
