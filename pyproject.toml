@@ -29,11 +29,3 @@ exclude = [
 
 # A list of error codes to ignore
 extend-ignore = ["E203", "E501", "F401"]
-
-[tool.sonar]
-projectKey = "ajbarea_aws-image-translate"
-organization = "ajbarea"
-# projectName = "aws-image-translate"
-# projectVersion = "1.0"
-# sources = "."
-# sourceEncoding = "UTF-8"
