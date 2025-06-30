@@ -1,6 +1,6 @@
-import pytest
-from unittest.mock import patch, MagicMock
-from main import process_image, process_all_images
+from unittest.mock import MagicMock
+
+from main import process_all_images, process_image
 
 
 def test_process_image_detects_and_translates(monkeypatch):
@@ -58,13 +58,35 @@ def test_process_all_images_list_error(monkeypatch):
 
 
 def test_main_function(monkeypatch):
-    mock_process_all = MagicMock(return_value=["foo"])
-    monkeypatch.setattr("main.process_all_images", mock_process_all)
+    mock_s3_exists = MagicMock(return_value=True)
+    mock_process = MagicMock(return_value="Hello")
+    monkeypatch.setattr("main.s3_object_exists", mock_s3_exists)
+    monkeypatch.setattr("main.process_image", mock_process)
     from main import main as main_func
 
     main_func("bucket", "es", "en")
 
-    mock_process_all.assert_called_once_with("bucket", "es", "en")
+    mock_s3_exists.assert_called_once_with("bucket", "es1.png")
+    mock_process.assert_called_once_with("es1.png", "bucket", "es", "en")
+
+
+def test_main_function_uploads_missing_image(monkeypatch):
+    mock_s3_exists = MagicMock(return_value=False)
+    mock_upload = MagicMock(return_value=True)
+    mock_process = MagicMock(return_value="Hello")
+    monkeypatch.setattr("main.s3_object_exists", mock_s3_exists)
+    monkeypatch.setattr("main.upload_file_to_s3", mock_upload)
+    monkeypatch.setattr("main.process_image", mock_process)
+    from main import main as main_func
+
+    main_func("bucket", "es", "en")
+
+    mock_upload.assert_called_once_with(
+        "C:/ajsoftworks/aws-image-translate/tests/resources/spanish_images/es1.png",
+        "bucket",
+        "es1.png",
+    )
+    mock_process.assert_called_once_with("es1.png", "bucket", "es", "en")
 
 
 def test_cli_invokes_main(monkeypatch, capsys):
@@ -92,8 +114,8 @@ def test_cli_default_args(monkeypatch):
     monkeypatch.setattr("main.main", mock_main)
     test_args = ["prog"]
     monkeypatch.setattr("sys.argv", test_args)
-    from main import cli
     from config import S3_IMAGE_BUCKET, SOURCE_LANGUAGE_CODE, TARGET_LANGUAGE_CODE
+    from main import cli
 
     cli()
 

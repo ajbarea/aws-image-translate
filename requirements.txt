@@ -1,4 +1,5 @@
 boto3
-pytest
-pytest-cov
+praw
+requests
 python-dotenv
+beautifulsoup4

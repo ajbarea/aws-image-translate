@@ -1,9 +1,36 @@
 import argparse
 from typing import List, Optional
-from src.amazon_rekognition import detect_text_from_s3
-from src.amazon_translate import translate_text
-from src.amazon_s3 import list_images_in_bucket
+
+import boto3
+
 from config import S3_IMAGE_BUCKET, SOURCE_LANGUAGE_CODE, TARGET_LANGUAGE_CODE
+from src.amazon_rekognition import detect_text_from_s3
+from src.amazon_s3 import list_images_in_bucket
+from src.amazon_translate import translate_text
+
+
+def s3_object_exists(bucket, key):
+    """Check if an object exists in an S3 bucket."""
+    s3 = boto3.client("s3")
+    try:
+        s3.head_object(Bucket=bucket, Key=key)
+        return True
+    except s3.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "404":
+            return False
+        else:
+            raise
+
+
+def upload_file_to_s3(file_path, bucket, key):
+    """Upload a file to an S3 bucket."""
+    s3 = boto3.client("s3")
+    try:
+        s3.upload_file(file_path, bucket, key)
+        return True
+    except Exception as e:
+        print(f"Error uploading file {file_path} to s3://{bucket}/{key}: {e}")
+        return False
 
 
 def process_image(
@@ -57,7 +84,21 @@ def main(
     target_lang: str = TARGET_LANGUAGE_CODE,
 ):
     """Main entry point for processing images."""
-    process_all_images(bucket, source_lang, target_lang)
+    image_name = "es1.png"
+    local_image_path = (
+        "C:/ajsoftworks/aws-image-translate/tests/resources/spanish_images/es1.png"
+    )
+
+    # Ensure the image exists in S3
+    if not s3_object_exists(bucket, image_name):
+        print(
+            f"Image s3://{bucket}/{image_name} not found. Uploading from {local_image_path}..."
+        )
+        if not upload_file_to_s3(local_image_path, bucket, image_name):
+            print("✗ Failed to upload image. Skipping image processing.")
+            return
+
+    process_image(image_name, bucket, source_lang, target_lang)
 
 
 def cli():

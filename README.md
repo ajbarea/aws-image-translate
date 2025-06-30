@@ -1,50 +1,106 @@
-# aws-image-translate
+# AWS Reddit Image Translation Pipeline
 
-Prototyping an image translation system using AWS services.
+> **AI-Powered Image Text Extraction and Translation System**
+> Automatically detect, extract, and translate text from Reddit images using AWS AI services including Rekognition, Comprehend, and Translate.
 
-## AWS Credentials Setup
+## 📚 Comprehensive Documentation Hub
 
-Before running, make sure you have AWS credentials configured. Create the following files with your AWS access keys and region:
+| Document | Purpose | Key Topics |
+|----------|---------|------------|
+| **[Reddit Pipeline Documentation](src/README.md)** | Complete technical guide | Reddit API integration, AWS service architecture, module APIs, deployment patterns |
+| **[Infrastructure Guide](terraform/README.md)** | Infrastructure automation | Terraform deployment, cost optimization, security best practices |
+| **[Frontend Deployment Guide](frontend/README.md)** | Web interface setup | Cognito authentication, S3 integration, deployment options |
 
-- `~/.aws/credentials`:
+## 🏗️ System Architecture Overview
 
-  ```ini
-  [default]
-  aws_access_key_id = YOUR_ACCESS_KEY_ID
-  aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-  ```
+**Core Components:**
 
-- `~/.aws/config`:
+- **Reddit Integration**: Automated content discovery and image extraction
+- **AWS Rekognition**: OCR text detection and extraction from images
+- **AWS Comprehend**: Intelligent language detection and confidence scoring
+- **AWS Translate**: Multi-language text translation with 75+ language support
+- **DynamoDB**: Stateful processing tracking and Reddit post management
+- **S3 Storage**: Secure image storage with encryption and lifecycle management
+- **Lambda Functions**: Serverless execution environment for scalable processing
 
-  ```ini
-  [default]
-  region=us-east-1
-  ```
+## ⚙️ Prerequisites and Requirements
 
-## Setup
+### System Requirements
+
+- **Python 3.8+** (actively tested with Python 3.13.2)
+- **AWS Account** with appropriate permissions for AI/ML services
+- **Reddit API credentials** for content access
+
+### AWS Credentials Setup
+
+Before running any AWS operations, configure your AWS credentials securely. Create the following credential files with your AWS access keys and region:
+
+**`~/.aws/credentials`:**
+
+```ini
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY_ID
+aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
+```
+
+**`~/.aws/config`:**
+
+```ini
+[default]
+region=us-east-1
+```
+
+**Alternative Methods:**
+
+- AWS CLI: `aws configure`
+- Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+- IAM roles (recommended for EC2/Lambda)
+
+## 🚀 Quick Start Guide
+
+### Virtual Environment Setup
+
+#### Option A: Using setup scripts (Recommended)
+
+```bash
+# Windows (PowerShell)
+.\setup-env.ps1           # Setup with dev dependencies
+.\setup-env.ps1 -Prod     # Production dependencies only
+.\setup-env.ps1 -Clean    # Clean install
+
+# Linux/Mac/Windows (Bash)
+./setup-env.sh            # Setup with dev dependencies
+./setup-env.sh --prod     # Production dependencies only
+./setup-env.sh --clean    # Clean install
+```
+
+#### Option B: Manual setup
 
 ```bash
 python -m venv .venv
-.venv/Scripts/activate  # Windows
+source .venv/Scripts/activate  # Windows
+source .venv/bin/activate     # Linux/Mac
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
-## Running the CLI
+### Running the CLI
 
 The main entry point is `main.py`, which provides a command-line interface to detect and translate text from images in an S3 bucket.
 
-### Usage
+#### Usage
 
 ```bash
 python main.py [--bucket BUCKET] [--source-lang SRC_LANG] [--target-lang TGT_LANG]
 ```
 
+**Parameters:**
+
 - `--bucket`: S3 bucket name (default: value from `config.py`)
 - `--source-lang`: Source language code (default: value from `config.py`)
 - `--target-lang`: Target language code (default: value from `config.py`)
 
-Example:
+**Example:**
 
 ```bash
 python main.py --bucket mybucket --source-lang es --target-lang en
@@ -52,18 +108,231 @@ python main.py --bucket mybucket --source-lang es --target-lang en
 
 If no arguments are provided, the defaults from `config.py` will be used.
 
-## Testing & Coverage
+### Environment Variables
 
-Run all tests with coverage:
+Before running the application, create a `.env.local` file in the project root with your Reddit API credentials:
 
-```bash
-pytest --cov=.
+```env
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
+REDDIT_USER_AGENT=python:translate-images-bot:1.0 (by u/yourusername)
+
+# Optional: Override default AWS settings
+AWS_REGION=us-east-1
+DYNAMODB_TABLE_NAME=reddit_ingest_state
 ```
 
-## References
+**Key Configuration Settings (config.py):**
 
-- <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/rekognition.html#>
-- <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html>
-- <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/translate/client/translate_text.html>
-- <https://docs.aws.amazon.com/rekognition/latest/dg/text-detecting-text-procedure.html>
-- <https://community.aws/content/2drbcpmaBORz25L3e74AM6EIcFj/build-your-own-translator-app-in-less-30-min>
+- **S3_IMAGE_BUCKET**: `"ajbarea-aws-translate"` - S3 bucket for image storage
+- **SOURCE_LANGUAGE_CODE**: `"es"` - Default source language (Spanish)
+- **TARGET_LANGUAGE_CODE**: `"en"` - Default target language (English)
+- **AWS_REGION**: `"us-east-1"` - AWS region for all services
+
+## Infrastructure Management
+
+This project includes Terraform configuration for managing AWS infrastructure. See [terraform/README.md](terraform/README.md) for detailed instructions.
+
+### Infrastructure Deployment
+
+1. **Initialize and deploy infrastructure:**
+
+   **Option A: Using deployment scripts (Recommended)**
+
+   ```bash
+   cd terraform
+
+   # Windows (PowerShell)
+   .\deploy.ps1 -Action init
+   .\deploy.ps1 -Action plan
+   .\deploy.ps1 -Action apply
+
+   # Linux/Mac (Bash)
+   ./deploy.sh init
+   ./deploy.sh plan
+   ./deploy.sh apply
+   ```
+
+   **Option B: Direct Terraform commands**
+
+   ```bash
+   cd terraform
+   terraform init
+   terraform plan
+   terraform apply
+   ```
+
+2. **Configure the frontend:**
+
+   ```bash
+   # Copy the configuration template
+   cd frontend/js
+   cp config.js.example config.js
+
+   # Get actual values from Terraform
+   cd ../../terraform
+   terraform output integration_config
+
+   # Edit frontend/js/config.js with the output values
+   ```
+
+3. **Clean up resources (Important - Avoid AWS costs):**
+
+   ```bash
+   # Using Terraform destroy
+   cd terraform
+   terraform destroy
+
+   # Alternative: Use deployment scripts
+   .\deploy.ps1 -Action destroy    # Windows PowerShell
+   ./deploy.sh destroy             # Linux/Mac/Windows Bash
+
+   # Alternative: Use cleanup script
+   python cleanup.py --dry-run    # Preview what will be deleted
+   python cleanup.py              # Actually delete resources
+   ```
+
+## 🧪 Testing & Development
+
+### Running Tests
+
+```bash
+# Run all tests (64 comprehensive tests)
+pytest
+
+# Run tests with coverage
+pytest --cov=src
+
+# Run tests with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_main.py
+
+# Run tests with coverage report
+pytest --cov=src --cov-report=html
+```
+
+### Development Tools
+
+The project includes comprehensive development tools configured in `requirements-dev.txt`:
+
+- **pytest>=8.0.0**: Testing framework with 64 comprehensive tests
+- **pytest-cov>=4.0.0**: Coverage reporting for test metrics
+- **moto>=4.2.0**: AWS services mocking for testing
+- **black>=23.0.0**: Code formatting with modern Python support
+- **flake8>=6.0.0**: Code linting with customizable rules
+- **isort>=5.12.0**: Import sorting for clean code organization
+- **mypy>=1.0.0**: Type checking for better code quality
+- **pre-commit>=3.0.0**: Git hooks for automated code quality checks
+
+```bash
+# Format code with modern Python support
+black .
+
+# Lint code with project-specific rules
+flake8 .
+
+# Sort imports for clean organization
+isort .
+
+# Type checking for better code quality
+mypy src/
+
+# Run all quality checks via pre-commit
+pre-commit run --all-files
+
+# Run tests with coverage reporting
+pytest --cov=src --cov-report=html
+
+# Run specific test modules
+pytest tests/test_main.py -v
+```
+
+## 📊 Project Status
+
+**Current Version**: Development/Testing Phase
+**Python Version**: Actively tested with Python 3.13.2
+**Test Coverage**: 64 comprehensive unit tests covering all modules
+**AWS Services**: S3, DynamoDB, Rekognition, Translate, Comprehend, Lambda
+**Last Updated**: June 2025
+
+### Current Features
+
+✅ **Core Functionality**
+
+- Reddit API integration for automated image discovery
+- AWS Rekognition OCR for text extraction from images
+- AWS Translate for multi-language text translation (75+ languages)
+- DynamoDB state management for processing tracking
+- S3 secure image storage with encryption
+
+✅ **Development Tools**
+
+- Comprehensive test suite with AWS service mocking (64 tests)
+- Modern code quality tools (Black, Flake8, isort, mypy)
+- Virtual environment setup with dual requirements files
+- Terraform infrastructure automation with deployment scripts
+- Frontend web interface with Cognito authentication
+- GitHub Actions CI/CD pipeline with automated testing
+- SonarQube integration for code quality analysis
+
+🔧 **Development Areas**
+
+- Performance optimization for large image batches
+- Enhanced error handling and retry mechanisms for AWS API failures
+- Cost optimization features and usage monitoring
+- Additional language support and detection confidence tuning
+- Real-time processing capabilities with Lambda triggers
+- Enhanced web UI with advanced filtering and search capabilities
+
+## 🚧 Project Architecture Details
+
+### Technology Stack
+
+**Backend:**
+
+- **Python 3.13.2**: Core application language with modern features
+- **AWS SDK (boto3)**: Cloud service integration
+- **Reddit API (PRAW)**: Automated content discovery
+- **BeautifulSoup4**: HTML parsing for media extraction
+
+**Infrastructure:**
+
+- **Terraform**: Infrastructure as Code for reproducible deployments
+- **AWS Services**: S3, DynamoDB, Rekognition, Translate, Comprehend, Lambda
+- **GitHub Actions**: CI/CD pipeline with automated testing and quality checks
+
+**Frontend:**
+
+- **Vanilla JavaScript**: Lightweight, fast, no frameworks required
+- **AWS SDK for JavaScript**: Direct AWS service integration
+- **AWS Cognito**: Secure user authentication and authorization
+
+**Development Tools:**
+
+- **pytest**: 64 comprehensive test cases with AWS mocking
+- **Black**: Opinionated code formatting for consistency
+- **Flake8**: Linting with customizable rules in setup.cfg
+- **mypy**: Static type checking for better code quality
+- **SonarQube**: Code quality analysis and security scanning
+
+## 📚 Documentation and Resources
+
+### AWS Service Documentation
+
+- [AWS Rekognition Text Detection](https://docs.aws.amazon.com/rekognition/latest/dg/text-detecting-text-procedure.html)
+- [AWS S3 Developer Guide](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/list_objects_v2.html)
+- [AWS Translate API Reference](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/translate/client/translate_text.html)
+- [AWS Lambda Python Runtime](https://docs.aws.amazon.com/lambda/latest/dg/python-programming-model.html)
+
+### Development Resources
+
+- [Python PRAW Documentation](https://praw.readthedocs.io/en/stable/)
+- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- [pytest Documentation](https://docs.pytest.org/en/stable/)
+- [AWS SDK for Python (Boto3)](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)
+
+### Community Resources
+
+- [Build Your Own Translator App Tutorial](https://community.aws/content/2drbcpmaBORz25L3e74AM6EIcFj/build-your-own-translator-app-in-less-30-min)
