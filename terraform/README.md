@@ -189,9 +189,9 @@ After deploying, your resources will match your Python `config.py`:
 
 ```python
 # These values are already synchronized:
-DYNAMODB_TABLE_NAME = "reddit_ingest_state"  # matches terraform output
-S3_IMAGE_BUCKET = "ajbarea"  # matches terraform output
-AWS_REGION = "us-east-1"  # matches terraform configuration
+DYNAMODB_TABLE_NAME = "reddit_ingest_state"
+S3_IMAGE_BUCKET = "ajbarea"
+AWS_REGION = "us-east-1"
 ```
 
 The infrastructure is designed to work seamlessly with your existing Python application configuration.

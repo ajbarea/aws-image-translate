@@ -89,7 +89,8 @@ def test_download_image_request_exception(mock_requests_get, caplog):
     assert image_bytes is None
     assert content_type is None
     assert (
-        f"Error downloading image from {TEST_URL_JPG}: Connection error" in caplog.text
+        "All download attempts failed for http://example.com/image.jpg: Connection error"
+        in caplog.text
     )
 
 

@@ -64,7 +64,12 @@ class AWSResourceCleanup:
 
             # Filter buckets related to our project
             project_buckets = []
-            patterns = ["ajbarea", "image-translate", "reddit-image"]
+            patterns = [
+                "ajbarea",
+                "image-translate",
+                "reddit-image",
+                "ajbarea-aws-translate-2025",
+            ]
 
             for bucket in buckets:
                 if any(pattern in bucket.lower() for pattern in patterns):

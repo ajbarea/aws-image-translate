@@ -83,7 +83,9 @@ def main(
 ):
     """Main entry point for processing images."""
     image_name = "es1.png"
-    local_image_path = "C:/ajsoftworks/aws-image-translate/spanish_images/es1.png"
+    local_image_path = (
+        "C:/ajsoftworks/aws-image-translate/tests/resources/spanish_images/es1.png"
+    )
 
     # Ensure the image exists in S3
     if not s3_object_exists(bucket, image_name):

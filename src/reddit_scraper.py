@@ -2,27 +2,35 @@
 
 This module provides functions to initialize a Reddit client, extract image URLs from posts,
 and fetch new image posts since a given post ID using the PRAW library.
+
+Enhanced with comprehensive media detection and authentication patterns.
 """
 
 import re
 import logging
 import praw
-from typing import Optional, Set, List
+import os
+from typing import Optional, Set, List, Dict, Tuple
+from pathlib import Path
+from dotenv import load_dotenv
 from config import (
     REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET,
     REDDIT_USER_AGENT,
     REDDIT_USERNAME,
     REDDIT_PASSWORD,
+    REDDIT_SCRAPING_CONFIG,
 )
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+# Enhanced pattern to support more media types and domains
 IMAGE_URL_PATTERN = re.compile(
-    r"https?://(?:i\.redd\.it|i\.imgur\.com|preview\.redd\.it)/[a-zA-Z0-9]+\.(?:jpg|jpeg|png|gif)"  # direct image links
-    r"|https?://imgur\.com/(?:gallery|a)/[a-zA-Z0-9]+"  # imgur galleries
+    r"https?://(?:i\.redd\.it|i\.imgur\.com|preview\.redd\.it)/[a-zA-Z0-9_-]+\.(?:jpg|jpeg|png|gif|webp)"  # direct image links
+    r"|https?://imgur\.com/(?:gallery|a)/[a-zA-Z0-9_-]+"  # imgur galleries
+    r"|https?://reddit\.com/gallery/[a-zA-Z0-9_-]+"  # reddit galleries
 )
 
 IMAGE_DOMAINS = [
@@ -30,30 +38,122 @@ IMAGE_DOMAINS = [
     "i.imgur.com",
     "imgur.com",
     "preview.redd.it",
-    # Add other domains if necessary
+    "reddit.com",
+    # Add other domains as needed
 ]
+
+
+# Enhanced authentication with better error handling
+def create_reddit_credentials() -> Dict[str, str]:
+    """Load Reddit API credentials from environment variables with comprehensive validation.
+
+    Returns:
+        Dictionary containing Reddit API credentials
+
+    Raises:
+        ValueError: If any required credentials are missing
+    """
+    # For testing purposes, check if we have test values first
+    if os.environ.get("REDDIT_TEST_MODE"):
+        return {
+            "client_id": "test_id",
+            "client_secret": "test_secret",
+            "user_agent": "test_agent",
+            "username": "test_user",
+            "password": "test_pass",  # NOSONAR
+        }
+
+    # Load environment variables from .env.local if it exists
+    env_path = Path(__file__).parent.parent / ".env.local"
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+
+    creds: Dict[str, Optional[str]] = {
+        "client_id": REDDIT_CLIENT_ID,
+        "client_secret": REDDIT_CLIENT_SECRET,
+        "user_agent": REDDIT_USER_AGENT,
+        "username": REDDIT_USERNAME,
+        "password": REDDIT_PASSWORD,
+    }
+
+    # Check if all credentials are loaded
+    missing_creds: List[str] = [key for key, value in creds.items() if not value]
+    if missing_creds:
+        error_msg = f"Missing Reddit credentials: {', '.join(missing_creds)}"
+        logging.error(error_msg)
+        logging.error(
+            "Please check your .env.local file and ensure all Reddit credentials are set."
+        )
+        raise ValueError(error_msg)
+
+    # Convert to Dict[str, str] since we've verified all values are not None
+    return {key: str(value) for key, value in creds.items()}
 
 
 def init_reddit_client() -> "praw.Reddit | None":
     """Initialize and return a PRAW Reddit client using credentials from config.
 
+    Enhanced with better error handling and credential validation.
+
     Returns:
         praw.Reddit | None: A configured Reddit client instance if successful, otherwise None.
     """
     try:
+        # Use enhanced credential loading
+        creds = create_reddit_credentials()
+
         reddit = praw.Reddit(
-            client_id=REDDIT_CLIENT_ID,
-            client_secret=REDDIT_CLIENT_SECRET,
-            user_agent=REDDIT_USER_AGENT,
-            username=REDDIT_USERNAME,
-            password=REDDIT_PASSWORD,
+            client_id=creds["client_id"],
+            client_secret=creds["client_secret"],
+            user_agent=creds["user_agent"],
+            username=creds["username"],
+            password=creds["password"],
             check_for_async=False,
         )
         reddit.read_only = True
+
+        # Test the connection
+        reddit.user.me()
+        logging.info("✅ Reddit client initialized successfully")
         return reddit
+
+    except ValueError as e:
+        logging.error(f"Credential error: {e}")
+        return None
     except Exception as e:
         logging.error(f"Error initializing Reddit client: {e}")
+        logging.error(
+            "Please verify your Reddit API credentials and internet connection"
+        )
         return None
+
+
+def is_supported_media_url(url: str) -> bool:
+    """Check if URL points to supported media format.
+
+    Args:
+        url: URL to check
+
+    Returns:
+        True if URL is supported media format
+    """
+    url_lower = url.lower()
+    supported_formats = REDDIT_SCRAPING_CONFIG["SUPPORTED_MEDIA_FORMATS"]
+    return any(f".{fmt}" in url_lower for fmt in supported_formats)
+
+
+def is_direct_media_url(url: str) -> bool:
+    """Check if URL is a direct media link.
+
+    Args:
+        url: URL to check
+
+    Returns:
+        True if URL is direct media link
+    """
+    return any(domain in url for domain in IMAGE_DOMAINS) and is_supported_media_url(
+        url
+    )
 
 
 def _extract_urls_from_text(text: str) -> Set[str]:
@@ -87,36 +187,72 @@ def extract_image_urls_from_submission(submission) -> Set[str]:
     return urls
 
 
-def get_image_urls_from_translator(
-    reddit: Optional["praw.Reddit"], limit: int = 25
-) -> List[str]:
-    """Fetch image URLs from r/translator/new posts.
+def get_image_urls_from_subreddits(
+    reddit: Optional["praw.Reddit"],
+    subreddits: Optional[List[str]] = None,
+    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
+) -> Dict[str, List[str]]:
+    """Fetch image URLs from multiple subreddits.
 
     Args:
-        reddit (Optional[praw.Reddit]): An initialized Reddit client or None.
-        limit (int, optional): The number of posts to fetch. Defaults to 25.
+        reddit: An initialized Reddit client or None
+        subreddits: List of subreddits to fetch from. If None, uses config
+        limit: The number of posts to fetch per subreddit
 
     Returns:
-        List[str]: A list of image URLs found in the latest posts.
+        Dict mapping subreddit names to lists of image URLs
     """
     if not reddit:
         logging.warning("Reddit client not initialized.")
-        return []
+        return {}
 
-    image_urls = set()
-    try:
-        subreddit = reddit.subreddit("translator")
-        for submission in subreddit.new(limit=limit):
-            image_urls.update(extract_image_urls_from_submission(submission))
-    except Exception as e:
-        logging.error(f"Error fetching posts from Reddit: {e}")
-    return list(image_urls)
+    if subreddits is None:
+        subreddits = REDDIT_SCRAPING_CONFIG.get(
+            "SUBREDDITS", [REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"]]
+        )
+    assert (
+        subreddits is not None
+    )  # Help type checker understand subreddits cannot be None here
+
+    results = {}
+    for subreddit_name in subreddits:
+        try:
+            subreddit = reddit.subreddit(subreddit_name)
+            urls = set()
+            for submission in subreddit.new(limit=limit):
+                urls.update(extract_image_urls_from_submission(submission))
+            results[subreddit_name] = list(urls)
+        except Exception as e:
+            logging.error(f"Error fetching posts from r/{subreddit_name}: {e}")
+            results[subreddit_name] = []
+
+    return results
+
+
+# Legacy wrapper for backward compatibility
+def get_image_urls_from_translator(
+    reddit: Optional["praw.Reddit"],
+    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
+) -> List[str]:
+    """Legacy wrapper for backward compatibility. Use get_image_urls_from_subreddits instead.
+
+    Args:
+        reddit: An initialized Reddit client or None
+        limit: The number of posts to fetch. Defaults to config value.
+
+    Returns:
+        List[str]: A list of image URLs found in the latest posts from r/translator.
+    """
+    results = get_image_urls_from_subreddits(
+        reddit, subreddits=[REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"]], limit=limit
+    )
+    return results.get(REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"], [])
 
 
 def get_new_image_posts_since(
     reddit: Optional["praw.Reddit"],
-    subreddit_name: str = "translator",
-    limit: int = 25,
+    subreddit_name: str = REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"],
+    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
     after_fullname: Optional[str] = None,
 ) -> List[tuple[str, str]]:
     """Fetch new image posts from a subreddit since a given post ID (fullname).

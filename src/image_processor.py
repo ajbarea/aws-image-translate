@@ -3,6 +3,7 @@ import io
 import os
 from urllib.parse import urlparse
 import logging
+import time
 from src.amazon_s3 import upload_fileobj_to_s3
 from src.reddit_scraper import init_reddit_client, get_new_image_posts_since
 from src.amazon_dynamodb import (
@@ -12,53 +13,98 @@ from src.amazon_dynamodb import (
 from config import (
     S3_IMAGE_BUCKET,
     DYNAMODB_TABLE_NAME,
-    AWS_REGION,
+    MEDIA_PROCESSING_CONFIG,
+    REDDIT_SCRAPING_CONFIG,
 )
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-SUPPORTED_IMAGE_TYPES = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/gif": ".gif",
-}
+SUPPORTED_IMAGE_TYPES = MEDIA_PROCESSING_CONFIG["SUPPORTED_IMAGE_TYPES"]
 
 
-def download_image(url):
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-        response = requests.get(url, headers=headers, stream=True, timeout=10)
-        response.raise_for_status()
-        content_type = (
-            response.headers.get("Content-Type", "").lower().split(";")[0].strip()
+def _infer_content_type_from_url(url, original_content_type):
+    """Infer content type from URL extension if not found in headers."""
+    if original_content_type in SUPPORTED_IMAGE_TYPES:
+        return original_content_type
+
+    parsed_url = urlparse(url)
+    ext = os.path.splitext(parsed_url.path)[1].lower()
+
+    for mime, known_ext in SUPPORTED_IMAGE_TYPES.items():
+        if ext == known_ext:
+            logging.info(
+                f"Inferred content type '{mime}' for URL {url} from extension '{ext}'."
+            )
+            return mime
+
+    logging.warning(
+        f"Skipping unsupported content type '{original_content_type}' or unknown extension for URL: {url}"
+    )
+    return None
+
+
+def _handle_retry_logic(retry_count, retries, url, error):
+    """Handle retry logic and logging for failed download attempts."""
+    retry_count += 1
+    if retry_count < retries:
+        wait_time = 2**retry_count  # Exponential backoff
+        logging.warning(
+            f"Download attempt {retry_count} failed for {url}: {error}. Retrying in {wait_time}s..."
         )
-        if content_type not in SUPPORTED_IMAGE_TYPES:
-            parsed_url = urlparse(url)
-            ext = os.path.splitext(parsed_url.path)[1].lower()
-            for mime, known_ext in SUPPORTED_IMAGE_TYPES.items():
-                if ext == known_ext:
-                    content_type = mime
-                    logging.info(
-                        f"Inferred content type '{content_type}' for URL {url} from extension '{ext}'."
-                    )
-                    break
-            else:
-                logging.warning(
-                    f"Skipping unsupported content type '{content_type}' or unknown extension for URL: {url}"
-                )
-                return None, None
-        image_bytes = io.BytesIO(response.content)
-        return image_bytes, content_type
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error downloading image from {url}: {e}")
-        return None, None
-    except Exception as e:
-        logging.error(f"An unexpected error occurred while downloading {url}: {e}")
-        return None, None
+        time.sleep(wait_time)
+        return retry_count
+    else:
+        logging.error(f"All download attempts failed for {url}: {error}")
+        return None
+
+
+def download_image(url, retries=MEDIA_PROCESSING_CONFIG["MAX_RETRIES"]):
+    """Download an image from a URL with retries and enhanced error handling.
+
+    Args:
+        url (str): The URL to download from
+        retries (int): Number of retries for failed downloads
+
+    Returns:
+        Tuple[Optional[io.BytesIO], Optional[str]]: (image_data, content_type) or (None, None) on failure
+    """
+    headers = {"User-Agent": MEDIA_PROCESSING_CONFIG["USER_AGENT_FALLBACK"]}
+    retry_count = 0
+
+    while retry_count < retries:
+        try:
+            response = requests.get(
+                url,
+                headers=headers,
+                stream=True,
+                timeout=MEDIA_PROCESSING_CONFIG["DOWNLOAD_TIMEOUT"],
+            )
+            response.raise_for_status()
+
+            original_content_type = (
+                response.headers.get("Content-Type", "").lower().split(";")[0].strip()
+            )
+
+            content_type = _infer_content_type_from_url(url, original_content_type)
+            if not content_type:
+                return (None, None)
+
+            image_bytes = io.BytesIO(response.content)
+            return (image_bytes, content_type)
+
+        except requests.exceptions.RequestException as e:
+            retry_count = _handle_retry_logic(retry_count, retries, url, e)
+            if retry_count is None:
+                return (None, None)
+
+        except Exception as e:
+            logging.error(f"An unexpected error occurred while downloading {url}: {e}")
+            return (None, None)
+
+    # If we've exhausted all retries
+    return (None, None)
 
 
 def _get_extension(base_name, content_type, image_url):
@@ -101,7 +147,18 @@ def _get_cleaned_base_name(parsed_url, base_name, extension, image_url):
     return cleaned_base_name
 
 
-def generate_s3_object_name(post_id, image_url, content_type):
+def generate_s3_object_name(post_id, image_url, content_type, subreddit="translator"):
+    """Generate a unique S3 object name for the image.
+
+    Args:
+        post_id (str): Reddit post ID
+        image_url (str): Original image URL
+        content_type (str): MIME type of the image
+        subreddit (str): Subreddit name for organizing files
+
+    Returns:
+        str: Generated S3 object key
+    """
     try:
         parsed_url = urlparse(image_url)
         base_name = os.path.basename(parsed_url.path)
@@ -111,27 +168,52 @@ def generate_s3_object_name(post_id, image_url, content_type):
         cleaned_base_name = _get_cleaned_base_name(
             parsed_url, base_name, extension, image_url
         )
-        object_name = f"r_translator/{cleaned_post_id}/{domain_part}_{cleaned_base_name}{extension}"
+        # Updated to use subreddit parameter for better organization
+        object_name = f"r_{subreddit}/{cleaned_post_id}/{domain_part}_{cleaned_base_name}{extension}"
         return object_name[:1000]
     except Exception as e:
         logging.error(
             f"Error generating S3 object name for URL {image_url}, post ID {post_id}: {e}"
         )
-        return f"r_translator/{post_id}/unknown_image_{hex(hash(image_url))[2:]}{SUPPORTED_IMAGE_TYPES.get(content_type, '.img')}"
+        return f"r_{subreddit}/{post_id}/unknown_image_{hex(hash(image_url))[2:]}{SUPPORTED_IMAGE_TYPES.get(content_type, '.img')}"
 
 
-def _process_image_posts(new_posts_data, s3_bucket_name):
+def _process_image_posts(new_posts_data, s3_bucket_name, subreddit="translator"):
+    """Process a batch of image posts.
+
+    Args:
+        new_posts_data (List[Tuple[str, str]]): List of (post_id, image_url) pairs
+        s3_bucket_name (str): Target S3 bucket
+        subreddit (str): Subreddit name for organizing files
+
+    Returns:
+        Tuple[int, int, Optional[str]]: (successful_uploads, failed_attempts, newest_id_in_batch)
+    """
     successful_uploads = 0
     failed_attempts = 0
     newest_id_in_batch = None
+
     for post_id, image_url in new_posts_data:
         logging.info(f"Processing Post ID: {post_id}, Image URL: {image_url}")
-        image_data, content_type = download_image(image_url)
+        download_result = download_image(image_url)
+
+        if download_result is None or download_result == (None, None):
+            logging.warning(
+                f"Skipping upload for Post ID: {post_id}, URL: {image_url} due to download error or unsupported type."
+            )
+            failed_attempts += 1
+            continue
+
+        image_data, content_type = download_result
+
         if image_data and content_type:
-            object_name = generate_s3_object_name(post_id, image_url, content_type)
+            object_name = generate_s3_object_name(
+                post_id, image_url, content_type, subreddit
+            )
             logging.info(
                 f"Uploading '{object_name}' to S3 bucket '{s3_bucket_name}'..."
             )
+
             image_data.seek(0)
             if upload_fileobj_to_s3(image_data, s3_bucket_name, object_name):
                 logging.info(f"Successfully uploaded '{object_name}' to S3.")
@@ -147,6 +229,7 @@ def _process_image_posts(new_posts_data, s3_bucket_name):
                 f"Skipping upload for Post ID: {post_id}, URL: {image_url} due to download error or unsupported type."
             )
             failed_attempts += 1
+
     return successful_uploads, failed_attempts, newest_id_in_batch
 
 
@@ -156,22 +239,40 @@ def process_new_images_from_reddit(
     subreddit_name="translator",
     reddit_fetch_limit=25,
 ):
-    logging.info("Starting image processing job.")
+    """Process new images from specified subreddit and store in S3.
+
+    Args:
+        s3_bucket_name (str): Target S3 bucket
+        dynamodb_table_name (str): DynamoDB table for state tracking
+        subreddit_name (str): Target subreddit name
+        reddit_fetch_limit (int): Maximum posts to process
+
+    Returns:
+        Dict[str, Any]: Processing results
+    """
+    logging.info(f"Starting image processing job for r/{subreddit_name}")
+
+    # Initialize Reddit client
     reddit_client = init_reddit_client()
     if not reddit_client:
         logging.error("Failed to initialize Reddit client. Aborting job.")
         return {"status": "error", "message": "Reddit client initialization failed."}
+
+    # Get last processed state
     subreddit_key = f"r/{subreddit_name}"
     last_processed_id = get_last_processed_post_id(dynamodb_table_name, subreddit_key)
     logging.info(
         f"Last processed post ID for {subreddit_key} from DynamoDB: {last_processed_id}"
     )
+
+    # Fetch new posts
     new_posts_data = get_new_image_posts_since(
         reddit_client,
         subreddit_name=subreddit_name,
         limit=reddit_fetch_limit,
         after_fullname=last_processed_id,
     )
+
     if not new_posts_data:
         logging.info("No new image posts found since last run.")
         return {
@@ -180,12 +281,16 @@ def process_new_images_from_reddit(
             "processed_count": 0,
             "newest_id_processed": last_processed_id,
         }
+
+    # Process the new posts
     logging.info(
         f"Found {len(new_posts_data)} new image posts/URLs. Starting download and upload process..."
     )
     successful_uploads, failed_attempts, newest_id_in_batch = _process_image_posts(
-        new_posts_data, s3_bucket_name
+        new_posts_data, s3_bucket_name, subreddit_name
     )
+
+    # Update processing state
     if newest_id_in_batch:
         logging.info(
             f"Updating DynamoDB with newest processed post ID for {subreddit_key}: {newest_id_in_batch}"
@@ -200,6 +305,8 @@ def process_new_images_from_reddit(
         logging.warning(
             f"No images were successfully uploaded in this run, DynamoDB state for {subreddit_key} remains {last_processed_id}."
         )
+
+    # Generate summary
     summary_message = (
         f"Processing summary for {subreddit_key}: "
         f"Total new posts/URLs fetched: {len(new_posts_data)}. "
@@ -209,6 +316,7 @@ def process_new_images_from_reddit(
         f"DynamoDB state for {subreddit_key} is now: {newest_id_in_batch if newest_id_in_batch else last_processed_id}."
     )
     logging.info(summary_message)
+
     return {
         "status": "success",
         "message": summary_message,
@@ -221,36 +329,85 @@ def process_new_images_from_reddit(
 
 
 def lambda_handler(event, context):
-    logging.info(f"Lambda handler invoked. Event: {event}, Context: {context}")
+    """AWS Lambda handler function.
+
+    Args:
+        event (dict): Lambda event containing optional parameters
+        context (dict): Lambda context
+
+    Returns:
+        dict: Lambda response
+    """
     s3_bucket = S3_IMAGE_BUCKET
     ddb_table = DYNAMODB_TABLE_NAME
-    subreddit = event.get("subreddit_name", "translator")
-    limit = event.get("fetch_limit", 25)
+
     if not s3_bucket or not ddb_table:
-        logging.error("S3_IMAGE_BUCKET or DYNAMODB_TABLE_NAME not configured.")
+        logging.error(
+            "Missing required configuration: S3 bucket or DynamoDB table name"
+        )
         return {
             "statusCode": 500,
             "body": "Configuration error: S3 bucket or DynamoDB table name missing.",
         }
-    result = process_new_images_from_reddit(
-        s3_bucket_name=s3_bucket,
-        dynamodb_table_name=ddb_table,
-        subreddit_name=subreddit,
-        reddit_fetch_limit=limit,
-    )
+
+    # Support both single subreddit and list of subreddits
+    subreddits = event.get("subreddits", None)
+    if not subreddits:
+        subreddits = [event.get("subreddit_name", "translator")]
+
+    limit = event.get("fetch_limit", REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"])
+
+    # Process each subreddit
+    results = {}
+    total_processed = 0
+    total_failed = 0
+
+    for subreddit in subreddits:
+        logging.info(f"Processing subreddit: r/{subreddit}")
+        result = process_new_images_from_reddit(
+            s3_bucket_name=s3_bucket,
+            dynamodb_table_name=ddb_table,
+            subreddit_name=subreddit,
+            reddit_fetch_limit=limit,
+        )
+        results[subreddit] = result
+
+        if result.get("status") == "error":
+            # If any subreddit processing fails, return its error
+            return {
+                "statusCode": 500,
+                "body": {
+                    "status": "error",
+                    "message": result.get("message", "Something went wrong."),
+                },
+            }
+
+        # Ensure we get integers for the counts
+        processed = int(result.get("processed_count", 0))
+        failed = int(result.get("failed_count", 0))
+        total_processed += processed
+        total_failed += failed
+
     return {
-        "statusCode": 200 if result.get("status") == "success" else 500,
-        "body": result,
+        "statusCode": 200,
+        "body": {
+            "status": "success",
+            "message": f"Processed {total_processed} images.",
+            "total_processed": total_processed,
+            "total_failed": total_failed,
+            "subreddit_results": results,
+        },
     }
 
 
 if __name__ == "__main__":
     logging.info("Starting image processing script directly (not as Lambda)...")
-    # Example direct invocation (uncomment to use):
-    # result = process_new_images_from_reddit(
-    #     s3_bucket_name=S3_IMAGE_BUCKET,
-    #     dynamodb_table_name=DYNAMODB_TABLE_NAME,
-    #     subreddit_name="translator",
-    #     reddit_fetch_limit=5
-    # )
-    # logging.info(f"Direct script execution result: {result}")
+    # Example direct invocation with multiple subreddits:
+    result = lambda_handler(
+        event={
+            "subreddits": REDDIT_SCRAPING_CONFIG["SUBREDDITS"],
+            "fetch_limit": REDDIT_SCRAPING_CONFIG["POST_SEARCH_AMOUNT"],
+        },
+        context={},
+    )
+    logging.info(f"Direct script execution result: {result}")

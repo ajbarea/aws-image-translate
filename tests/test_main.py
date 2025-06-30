@@ -82,7 +82,9 @@ def test_main_function_uploads_missing_image(monkeypatch):
     main_func("bucket", "es", "en")
 
     mock_upload.assert_called_once_with(
-        "C:/ajsoftworks/aws-image-translate/spanish_images/es1.png", "bucket", "es1.png"
+        "C:/ajsoftworks/aws-image-translate/tests/resources/spanish_images/es1.png",
+        "bucket",
+        "es1.png",
     )
     mock_process.assert_called_once_with("es1.png", "bucket", "es", "en")
 
