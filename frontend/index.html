@@ -13,6 +13,12 @@
     <link href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" rel="stylesheet">
     <!-- Custom styles -->
     <link href="css/styles.css" rel="stylesheet">
+    <!-- Hide duplicate login tab button to show only one login button -->
+    <style>
+        #loginTab {
+            display: none !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -21,12 +27,52 @@
         <p>Upload images to detect and translate text using AWS services</p>
 
         <div class="login-section" id="loginSection">
-            <h2>Login</h2>
-            <form id="loginForm">
-                <input type="email" id="username" placeholder="Email" required>
-                <input type="password" id="password" placeholder="Password" required>
-                <button type="submit">Login</button>
-            </form>
+            <div class="auth-tabs">
+                <button id="loginTab" class="tab-button active">Login</button>
+                <button id="registerTab" class="tab-button">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginFormContainer" class="auth-form-container">
+                <h2>Login</h2>
+                <form id="loginForm">
+                    <input type="email" id="username" placeholder="Email" required>
+                    <input type="password" id="password" placeholder="Password" required>
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+
+            <!-- Registration Form -->
+            <div id="registerFormContainer" class="auth-form-container" style="display: none;">
+                <h2>Create Account</h2>
+                <form id="registerForm">
+                    <input type="email" id="registerEmail" placeholder="Email" required>
+                    <input type="password" id="registerPassword" placeholder="Password" required>
+                    <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                    <button type="submit">Create Account</button>
+                </form>
+                <p class="password-requirements">
+                    Password must be at least 8 characters with uppercase, lowercase, number, and symbol.
+                </p>
+            </div>
+
+            <!-- Email Confirmation Form -->
+            <div id="confirmationFormContainer" class="auth-form-container" style="display: none;">
+                <h2>Confirm Your Email</h2>
+                <p>We've sent a confirmation code to your email address. Please enter it below to complete your
+                    registration.
+                </p>
+                <form id="confirmationForm">
+                    <input type="email" id="confirmationEmail" placeholder="Email" readonly>
+                    <input type="text" id="confirmationCode" placeholder="Enter confirmation code" required
+                        maxlength="6" pattern="[0-9]{6}">
+                    <button type="submit">Confirm Email</button>
+                </form>
+                <div class="confirmation-actions">
+                    <button type="button" id="resendCodeBtn" class="secondary-button">Resend Code</button>
+                    <button type="button" id="backToLoginBtn" class="secondary-button">Back to Login</button>
+                </div>
+            </div>
         </div>
 
         <div class="app-section" id="appSection" style="display: none">
