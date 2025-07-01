@@ -213,41 +213,28 @@ pytest tests/test_main.py
 pytest --cov=src --cov-report=html
 ```
 
-### Development Tools
+### Development Tools and Code Quality
 
-The project includes comprehensive development tools configured in `requirements-dev.txt`:
+This project uses a suite of modern Python development tools to ensure high code quality and consistency. Code formatting, linting, and type-checking are automated using `pre-commit` hooks.
 
-- **pytest>=8.0.0**: Testing framework with 64 comprehensive tests
-- **pytest-cov>=4.0.0**: Coverage reporting for test metrics
-- **moto>=4.2.0**: AWS services mocking for testing
-- **black>=23.0.0**: Code formatting with modern Python support
-- **flake8>=6.0.0**: Code linting with customizable rules
-- **isort>=5.12.0**: Import sorting for clean code organization
-- **mypy>=1.0.0**: Type checking for better code quality
-- **pre-commit>=3.0.0**: Git hooks for automated code quality checks
+The primary tools include:
+- **`pytest`**: For running the comprehensive test suite.
+- **`black`**: For opinionated, consistent code formatting.
+- **`isort`**: For automatically sorting imports.
+- **`flake8`**: For enforcing style and complexity rules.
+- **`mypy`**: For static type checking.
+
+#### Running Quality Checks
+
+To run all code quality checks and formatters across the entire project, use the provided script:
 
 ```bash
-# Format code with modern Python support
-black .
-
-# Lint code with project-specific rules
-flake8 .
-
-# Sort imports for clean organization
-isort .
-
-# Type checking for better code quality
-mypy src/
-
-# Run all quality checks via pre-commit
-pre-commit run --all-files
-
-# Run tests with coverage reporting
-pytest --cov=src --cov-report=html
-
-# Run specific test modules
-pytest tests/test_main.py -v
+./lint.sh
 ```
+
+This script executes all configured `pre-commit` hooks, which include `black`, `isort`, `flake8`, and `mypy`.
+
+For convenience, `pre-commit` is also configured to run on every `git commit`. To enable this feature, run `pre-commit install` once after setting up your environment.
 
 ## 🚧 Project Architecture Details
 
@@ -275,9 +262,7 @@ pytest tests/test_main.py -v
 **Development Tools:**
 
 - **pytest**: 64 comprehensive test cases with AWS mocking
-- **Black**: Opinionated code formatting for consistency
-- **Flake8**: Linting with customizable rules in setup.cfg
-- **mypy**: Static type checking for better code quality
+- **pre-commit**: For automated code quality checks.
 - **SonarQube**: Code quality analysis and security scanning
 
 ## 📚 Documentation and Resources
