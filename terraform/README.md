@@ -20,9 +20,7 @@ Your AWS credentials need the following permissions:
 - `s3:CreateBucket`, `s3:PutBucketPolicy`, `s3:PutBucketEncryption`
 - `dynamodb:CreateTable`, `dynamodb:DescribeTable`
 - `iam:CreateRole`, `iam:CreatePolicy`, `iam:AttachRolePolicy`
-- `lambda:CreateFunction` (if deploying Lambda functions) of AWS resources for image text extraction, language detection, and translation pipeline using Terraform.
-
-This directory contains simplified Terraform configuration for deploying AWS infrastructure for the image translation pipeline.
+- `lambda:CreateFunction` (if deploying Lambda functions)
 
 ## 🏗️ What This Creates
 
@@ -93,7 +91,7 @@ Instead of running terraform commands directly, you can use the deployment scrip
 .\deploy.ps1 -Action apply
 ```
 
-**Linux/Mac/Windows Bash:**
+**Linux/Mac:**
 
 ```bash
 ./deploy.sh init

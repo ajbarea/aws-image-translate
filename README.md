@@ -68,7 +68,7 @@ region=us-east-1
 .\setup-env.ps1 -Prod     # Production dependencies only
 .\setup-env.ps1 -Clean    # Clean install
 
-# Linux/Mac/Windows (Bash)
+# Linux/Mac
 ./setup-env.sh            # Setup with dev dependencies
 ./setup-env.sh --prod     # Production dependencies only
 ./setup-env.sh --clean    # Clean install
@@ -185,7 +185,7 @@ This project includes Terraform configuration for managing AWS infrastructure. S
 
    # Alternative: Use deployment scripts
    .\deploy.ps1 -Action destroy    # Windows PowerShell
-   ./deploy.sh destroy             # Linux/Mac/Windows Bash
+   ./deploy.sh destroy             # Linux/Mac
 
    # Alternative: Use cleanup script
    python cleanup.py --dry-run    # Preview what will be deleted
@@ -196,21 +196,10 @@ This project includes Terraform configuration for managing AWS infrastructure. S
 
 ### Running Tests
 
+To run the full test suite, including coverage reporting, use the following command:
+
 ```bash
-# Run all tests (64 comprehensive tests)
-pytest
-
-# Run tests with coverage
 pytest --cov=src
-
-# Run tests with verbose output
-pytest -v
-
-# Run specific test file
-pytest tests/test_main.py
-
-# Run tests with coverage report
-pytest --cov=src --cov-report=html
 ```
 
 ### Development Tools and Code Quality
@@ -218,6 +207,7 @@ pytest --cov=src --cov-report=html
 This project uses a suite of modern Python development tools to ensure high code quality and consistency. Code formatting, linting, and type-checking are automated using `pre-commit` hooks.
 
 The primary tools include:
+
 - **`pytest`**: For running the comprehensive test suite.
 - **`black`**: For opinionated, consistent code formatting.
 - **`isort`**: For automatically sorting imports.
@@ -258,12 +248,6 @@ For convenience, `pre-commit` is also configured to run on every `git commit`. T
 - **Vanilla JavaScript**: Lightweight, fast, no frameworks required
 - **AWS SDK for JavaScript**: Direct AWS service integration
 - **AWS Cognito**: Secure user authentication and authorization
-
-**Development Tools:**
-
-- **pytest**: 64 comprehensive test cases with AWS mocking
-- **pre-commit**: For automated code quality checks.
-- **SonarQube**: Code quality analysis and security scanning
 
 ## 📚 Documentation and Resources
 
