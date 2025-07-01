@@ -42,7 +42,12 @@ jobs:
         run: |
           pytest --cov --cov-branch --cov-report=xml
 
-      # 5. Upload coverage report to Codecov
+      # 5. Run mypy type checking
+      - name: Run mypy type checking
+        run: |
+          python -m mypy src/ --strict
+
+      # 6. Upload coverage report to Codecov
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
@@ -52,7 +57,7 @@ jobs:
   sonarqube:
     name: SonarQube
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
         with:

@@ -14,6 +14,8 @@ isort>=5.12.0
 
 # Type checking (optional but recommended)
 mypy>=1.0.0
+types-requests>=2.0.0
+types-boto3>=1.0.0
 
 # Additional development tools
 pre-commit>=3.0.0

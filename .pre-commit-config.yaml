@@ -38,9 +38,11 @@ repos:
       - id: flake8
         additional_dependencies: [flake8-pyproject]
 
-  # Optional: mypy type checker (uncomment if you want type checking)
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #     - id: mypy
-  #       additional_dependencies: [types-requests, types-boto3]
+  # mypy type checker
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          [types-requests, types-boto3, types-beautifulsoup4]
+        files: ^src/
