@@ -17,5 +17,5 @@ output "api_gateway_url" {
 
 output "api_gateway_invoke_url" {
   description = "Invoke URL of the API Gateway"
-  value       = aws_api_gateway_deployment.api_deployment.invoke_url
+  value       = "https://${aws_api_gateway_rest_api.image_api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com/prod"
 }

@@ -61,13 +61,17 @@ module "cognito" {
   s3_bucket_arn = module.s3.bucket_arn
 }
 
-# Lambda for image processing
+# Lambda for serverless image processing
 module "lambda" {
   source = "./modules/lambda"
 
   project_name   = var.project_name
   s3_bucket_name = module.s3.bucket_name
   s3_bucket_arn  = module.s3.bucket_arn
+  allowed_origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+  ]
 }
 
 # IAM roles and policies for the application
@@ -126,6 +130,11 @@ resource "aws_iam_role_policy" "app_policy" {
           "rekognition:DetectText"
         ]
         Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestedRegion" = var.aws_region
+          }
+        }
       },
       {
         Effect = "Allow"
@@ -133,6 +142,11 @@ resource "aws_iam_role_policy" "app_policy" {
           "comprehend:DetectDominantLanguage"
         ]
         Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestedRegion" = var.aws_region
+          }
+        }
       },
       {
         Effect = "Allow"
@@ -140,6 +154,11 @@ resource "aws_iam_role_policy" "app_policy" {
           "translate:TranslateText"
         ]
         Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestedRegion" = var.aws_region
+          }
+        }
       }
     ]
   })

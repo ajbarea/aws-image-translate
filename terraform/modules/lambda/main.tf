@@ -1,5 +1,11 @@
 # Lambda module for image processing
 
+# Get current AWS region
+data "aws_region" "current" {}
+
+# Get current AWS account ID
+data "aws_caller_identity" "current" {}
+
 # ZIP the Lambda function code
 data "archive_file" "lambda_zip" {
   type        = "zip"
@@ -59,11 +65,17 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Effect = "Allow"
         Action = [
-          "logs:CreateLogGroup",
+          "logs:CreateLogGroup"
+        ]
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-image-processor"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-image-processor:*"
       },
       {
         Effect = "Allow"
@@ -81,6 +93,11 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "rekognition:DetectText"
         ]
         Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestedRegion" = data.aws_region.current.name
+          }
+        }
       },
       {
         Effect = "Allow"
@@ -88,6 +105,11 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "comprehend:DetectDominantLanguage"
         ]
         Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestedRegion" = data.aws_region.current.name
+          }
+        }
       },
       {
         Effect = "Allow"
@@ -95,6 +117,11 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "translate:TranslateText"
         ]
         Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:RequestedRegion" = data.aws_region.current.name
+          }
+        }
       }
     ]
   })
@@ -157,9 +184,7 @@ resource "aws_api_gateway_integration" "options_integration" {
   type        = "MOCK"
 
   request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
+    "application/json" = "{\"statusCode\": 200}"
   }
 }
 
@@ -187,6 +212,15 @@ resource "aws_api_gateway_integration_response" "options_integration_response" {
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
+
+  response_templates = {
+    "application/json" = ""
+  }
+
+  depends_on = [
+    aws_api_gateway_integration.options_integration,
+    aws_api_gateway_method_response.options_response
+  ]
 }
 
 resource "aws_api_gateway_integration" "lambda_integration" {
@@ -199,6 +233,18 @@ resource "aws_api_gateway_integration" "lambda_integration" {
   uri                     = aws_lambda_function.image_processor.invoke_arn
 }
 
+# Method response for POST (required for CORS)
+resource "aws_api_gateway_method_response" "post_response" {
+  rest_api_id = aws_api_gateway_rest_api.image_api.id
+  resource_id = aws_api_gateway_resource.process_resource.id
+  http_method = aws_api_gateway_method.process_method.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin" = true
+  }
+}
+
 resource "aws_api_gateway_stage" "api_stage" {
   deployment_id = aws_api_gateway_deployment.api_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.image_api.id
@@ -209,6 +255,8 @@ resource "aws_api_gateway_deployment" "api_deployment" {
   depends_on = [
     aws_api_gateway_integration.lambda_integration,
     aws_api_gateway_integration.options_integration,
+    aws_api_gateway_method_response.post_response,
+    aws_api_gateway_method_response.options_response,
   ]
 
   rest_api_id = aws_api_gateway_rest_api.image_api.id
@@ -218,6 +266,7 @@ resource "aws_api_gateway_deployment" "api_deployment" {
       aws_api_gateway_resource.process_resource.id,
       aws_api_gateway_method.process_method.id,
       aws_api_gateway_integration.lambda_integration.id,
+      aws_api_gateway_method_response.post_response.id,
     ]))
   }
 
