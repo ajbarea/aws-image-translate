@@ -1,9 +1,11 @@
+from typing import Any, List, Optional
+
 import boto3
 
 from config import AWS_REGION
 
 
-def list_images_in_bucket(bucket):
+def list_images_in_bucket(bucket: str) -> List[str]:
     s3 = boto3.client("s3", region_name=AWS_REGION)
     response = s3.list_objects_v2(Bucket=bucket)
     images = [
@@ -14,7 +16,9 @@ def list_images_in_bucket(bucket):
     return images
 
 
-def upload_file_to_s3(file_path, bucket_name, object_name=None):
+def upload_file_to_s3(
+    file_path: str, bucket_name: str, object_name: Optional[str] = None
+) -> bool:
     if object_name is None:
         object_name = file_path.split("/")[-1]
     s3_client = boto3.client("s3", region_name=AWS_REGION)
@@ -26,7 +30,7 @@ def upload_file_to_s3(file_path, bucket_name, object_name=None):
     return True
 
 
-def upload_fileobj_to_s3(fileobj, bucket_name, object_name):
+def upload_fileobj_to_s3(fileobj: Any, bucket_name: str, object_name: str) -> bool:
     s3_client = boto3.client("s3", region_name=AWS_REGION)
     try:
         s3_client.upload_fileobj(fileobj, bucket_name, object_name)

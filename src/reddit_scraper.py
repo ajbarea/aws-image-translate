@@ -10,7 +10,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 import praw
 from dotenv import load_dotenv
@@ -133,7 +133,7 @@ def is_supported_media_url(url: str) -> bool:
     """
     url_lower = url.lower()
     supported_formats = REDDIT_SCRAPING_CONFIG["SUPPORTED_MEDIA_FORMATS"]
-    return any(f".{fmt}" in url_lower for fmt in supported_formats)
+    return any(f".{fmt}" in url_lower for fmt in supported_formats)  # type: ignore
 
 
 def is_direct_media_url(url: str) -> bool:
@@ -162,7 +162,7 @@ def _extract_urls_from_text(text: str) -> Set[str]:
     return {match.group(0) for match in IMAGE_URL_PATTERN.finditer(text)}
 
 
-def extract_image_urls_from_submission(submission) -> Set[str]:
+def extract_image_urls_from_submission(submission: Any) -> Set[str]:
     """Extract all image URLs from a Reddit submission's URL and selftext.
 
     Args:
@@ -184,7 +184,7 @@ def extract_image_urls_from_submission(submission) -> Set[str]:
 def get_image_urls_from_subreddits(
     reddit: Optional["praw.Reddit"],
     subreddits: Optional[List[str]] = None,
-    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
+    limit: int = cast(int, REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"]),
 ) -> Dict[str, List[str]]:
     """Fetch image URLs from multiple subreddits.
 
@@ -201,12 +201,13 @@ def get_image_urls_from_subreddits(
         return {}
 
     if subreddits is None:
-        subreddits = REDDIT_SCRAPING_CONFIG.get(
-            "SUBREDDITS", [REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"]]
+        config_subreddits = REDDIT_SCRAPING_CONFIG.get("SUBREDDITS")
+        default_subreddit = cast(str, REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"])
+        subreddits = (
+            cast(List[str], config_subreddits)
+            if config_subreddits
+            else [default_subreddit]
         )
-    assert (
-        subreddits is not None
-    )  # Help type checker understand subreddits cannot be None here
 
     results = {}
     for subreddit_name in subreddits:
@@ -226,7 +227,7 @@ def get_image_urls_from_subreddits(
 # Legacy wrapper for backward compatibility
 def get_image_urls_from_translator(
     reddit: Optional["praw.Reddit"],
-    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
+    limit: int = cast(int, REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"]),
 ) -> List[str]:
     """Legacy wrapper for backward compatibility. Use get_image_urls_from_subreddits instead.
 
@@ -237,18 +238,19 @@ def get_image_urls_from_translator(
     Returns:
         List[str]: A list of image URLs found in the latest posts from r/translator.
     """
+    default_subreddit = cast(str, REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"])
     results = get_image_urls_from_subreddits(
-        reddit, subreddits=[REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"]], limit=limit
+        reddit, subreddits=[default_subreddit], limit=limit
     )
-    return results.get(REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"], [])
+    return results.get(default_subreddit, [])
 
 
 def get_new_image_posts_since(
     reddit: Optional["praw.Reddit"],
-    subreddit_name: str = REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"],
-    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
+    subreddit_name: str = cast(str, REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"]),
+    limit: int = cast(int, REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"]),
     after_fullname: Optional[str] = None,
-) -> List[tuple[str, str]]:
+) -> List[Tuple[str, str]]:
     """Fetch new image posts from a subreddit since a given post ID (fullname).
 
     Args:
@@ -258,7 +260,7 @@ def get_new_image_posts_since(
         after_fullname (Optional[str], optional): Only return posts after this fullname. Defaults to None.
 
     Returns:
-        List[tuple[str, str]]: A list of (post_id, image_url) tuples for new image posts.
+        List[Tuple[str, str]]: A list of (post_id, image_url) tuples for new image posts.
     """
     if not reddit:
         logging.warning("Reddit client not initialized.")

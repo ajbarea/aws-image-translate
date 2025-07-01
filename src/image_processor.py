@@ -2,6 +2,7 @@ import io
 import logging
 import os
 import time
+from typing import Any, Dict, List, Mapping, Optional, Tuple, cast
 from urllib.parse import urlparse
 
 import requests
@@ -23,23 +24,25 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-SUPPORTED_IMAGE_TYPES = MEDIA_PROCESSING_CONFIG["SUPPORTED_IMAGE_TYPES"]
+# pull in supported types
+SUPPORTED_IMAGE_TYPES: Mapping[str, str] = MEDIA_PROCESSING_CONFIG["SUPPORTED_IMAGE_TYPES"]  # type: ignore
 
 
-def _infer_content_type_from_url(url, original_content_type):
+def _infer_content_type_from_url(url: str, original_content_type: str) -> Optional[str]:
     """Infer content type from URL extension if not found in headers."""
-    if original_content_type in SUPPORTED_IMAGE_TYPES:
+    supported_types = SUPPORTED_IMAGE_TYPES
+    if original_content_type in supported_types:
         return original_content_type
 
     parsed_url = urlparse(url)
     ext = os.path.splitext(parsed_url.path)[1].lower()
 
-    for mime, known_ext in SUPPORTED_IMAGE_TYPES.items():
+    for mime, known_ext in supported_types.items():
         if ext == known_ext:
             logging.info(
                 f"Inferred content type '{mime}' for URL {url} from extension '{ext}'."
             )
-            return mime
+            return str(mime)  # Ensure we return str, not Any
 
     logging.warning(
         f"Skipping unsupported content type '{original_content_type}' or unknown extension for URL: {url}"
@@ -47,7 +50,9 @@ def _infer_content_type_from_url(url, original_content_type):
     return None
 
 
-def _handle_retry_logic(retry_count, retries, url, error):
+def _handle_retry_logic(
+    retry_count: int, retries: int, url: str, error: Exception
+) -> Optional[int]:
     """Handle retry logic and logging for failed download attempts."""
     retry_count += 1
     if retry_count < retries:
@@ -62,7 +67,9 @@ def _handle_retry_logic(retry_count, retries, url, error):
         return None
 
 
-def download_image(url, retries=MEDIA_PROCESSING_CONFIG["MAX_RETRIES"]):
+def download_image(
+    url: str, retries: Optional[int] = None
+) -> Tuple[Optional[io.BytesIO], Optional[str]]:
     """Download an image from a URL with retries and enhanced error handling.
 
     Args:
@@ -72,7 +79,12 @@ def download_image(url, retries=MEDIA_PROCESSING_CONFIG["MAX_RETRIES"]):
     Returns:
         Tuple[Optional[io.BytesIO], Optional[str]]: (image_data, content_type) or (None, None) on failure
     """
-    headers = {"User-Agent": MEDIA_PROCESSING_CONFIG["USER_AGENT_FALLBACK"]}
+    if retries is None:
+        retries = cast(int, MEDIA_PROCESSING_CONFIG["MAX_RETRIES"])
+
+    headers: Dict[str, str] = {
+        "User-Agent": cast(str, MEDIA_PROCESSING_CONFIG["USER_AGENT_FALLBACK"])
+    }
     retry_count = 0
 
     while retry_count < retries:
@@ -81,7 +93,7 @@ def download_image(url, retries=MEDIA_PROCESSING_CONFIG["MAX_RETRIES"]):
                 url,
                 headers=headers,
                 stream=True,
-                timeout=MEDIA_PROCESSING_CONFIG["DOWNLOAD_TIMEOUT"],
+                timeout=cast(float, MEDIA_PROCESSING_CONFIG["DOWNLOAD_TIMEOUT"]),
             )
             response.raise_for_status()
 
@@ -97,9 +109,10 @@ def download_image(url, retries=MEDIA_PROCESSING_CONFIG["MAX_RETRIES"]):
             return (image_bytes, content_type)
 
         except requests.exceptions.RequestException as e:
-            retry_count = _handle_retry_logic(retry_count, retries, url, e)
-            if retry_count is None:
+            new_retry_count = _handle_retry_logic(retry_count, retries, url, e)
+            if new_retry_count is None:
                 return (None, None)
+            retry_count = new_retry_count
 
         except Exception as e:
             logging.error(f"An unexpected error occurred while downloading {url}: {e}")
@@ -109,20 +122,21 @@ def download_image(url, retries=MEDIA_PROCESSING_CONFIG["MAX_RETRIES"]):
     return (None, None)
 
 
-def _get_extension(base_name, content_type, image_url):
-    extension = SUPPORTED_IMAGE_TYPES.get(content_type)
+def _get_extension(base_name: str, content_type: str, image_url: str) -> str:
+    supported_types = SUPPORTED_IMAGE_TYPES
+    extension = supported_types.get(content_type)
     if not extension:
         url_ext = os.path.splitext(base_name)[1]
         extension = (
-            url_ext if url_ext and url_ext in SUPPORTED_IMAGE_TYPES.values() else ".img"
+            url_ext if url_ext and url_ext in supported_types.values() else ".img"
         )
         logging.warning(
             f"Content type {content_type} unknown, derived extension {extension} for {image_url}"
         )
-    return extension
+    return str(extension)
 
 
-def _fallback_cleaned_base_name(parsed_url, image_url):
+def _fallback_cleaned_base_name(parsed_url: Any, image_url: str) -> str:
     path_segments = [seg for seg in parsed_url.path.split("/") if seg]
     if path_segments:
         return "".join(
@@ -138,7 +152,9 @@ def _fallback_cleaned_base_name(parsed_url, image_url):
     return fallback_name_part if fallback_name_part else hex(hash(image_url))[2:]
 
 
-def _get_cleaned_base_name(parsed_url, base_name, extension, image_url):
+def _get_cleaned_base_name(
+    parsed_url: Any, base_name: str, extension: str, image_url: str
+) -> str:
     cleaned_base_name = "".join(
         c if c.isalnum() else "_"
         for c in base_name
@@ -149,7 +165,9 @@ def _get_cleaned_base_name(parsed_url, base_name, extension, image_url):
     return cleaned_base_name
 
 
-def generate_s3_object_name(post_id, image_url, content_type, subreddit="translator"):
+def generate_s3_object_name(
+    post_id: str, image_url: str, content_type: str, subreddit: str = "translator"
+) -> str:
     """Generate a unique S3 object name for the image.
 
     Args:
@@ -180,7 +198,11 @@ def generate_s3_object_name(post_id, image_url, content_type, subreddit="transla
         return f"r_{subreddit}/{post_id}/unknown_image_{hex(hash(image_url))[2:]}{SUPPORTED_IMAGE_TYPES.get(content_type, '.img')}"
 
 
-def _process_image_posts(new_posts_data, s3_bucket_name, subreddit="translator"):
+def _process_image_posts(
+    new_posts_data: List[Tuple[str, str]],
+    s3_bucket_name: str,
+    subreddit: str = "translator",
+) -> Tuple[int, int, Optional[str]]:
     """Process a batch of image posts.
 
     Args:
@@ -236,11 +258,11 @@ def _process_image_posts(new_posts_data, s3_bucket_name, subreddit="translator")
 
 
 def process_new_images_from_reddit(
-    s3_bucket_name,
-    dynamodb_table_name,
-    subreddit_name="translator",
-    reddit_fetch_limit=25,
-):
+    s3_bucket_name: str,
+    dynamodb_table_name: str,
+    subreddit_name: str = "translator",
+    reddit_fetch_limit: int = 25,
+) -> Dict[str, Any]:
     """Process new images from specified subreddit and store in S3.
 
     Args:
@@ -330,7 +352,7 @@ def process_new_images_from_reddit(
     }
 
 
-def lambda_handler(event, context):
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """AWS Lambda handler function.
 
     Args:

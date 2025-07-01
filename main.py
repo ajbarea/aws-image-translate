@@ -9,7 +9,7 @@ from src.amazon_s3 import list_images_in_bucket
 from src.amazon_translate import translate_text
 
 
-def s3_object_exists(bucket, key):
+def s3_object_exists(bucket: str, key: str) -> bool:
     """Check if an object exists in an S3 bucket."""
     s3 = boto3.client("s3")
     try:
@@ -22,7 +22,7 @@ def s3_object_exists(bucket, key):
             raise
 
 
-def upload_file_to_s3(file_path, bucket, key):
+def upload_file_to_s3(file_path: str, bucket: str, key: str) -> bool:
     """Upload a file to an S3 bucket."""
     s3 = boto3.client("s3")
     try:
@@ -82,7 +82,7 @@ def main(
     bucket: str = S3_IMAGE_BUCKET,
     source_lang: str = SOURCE_LANGUAGE_CODE,
     target_lang: str = TARGET_LANGUAGE_CODE,
-):
+) -> None:
     """Main entry point for processing images."""
     image_name = "es1.png"
     local_image_path = (
@@ -101,7 +101,7 @@ def main(
     process_image(image_name, bucket, source_lang, target_lang)
 
 
-def cli():
+def cli() -> None:
     parser = argparse.ArgumentParser(
         description="Detect and translate text from images in an S3 bucket."
     )

@@ -5,24 +5,27 @@ state information about the last processed post for a given subreddit. It is int
 in Reddit ingestion pipelines or similar workflows.
 """
 
+import sys
+from typing import Any, Optional
+
 import boto3
 from botocore.exceptions import ClientError
 
 from config import AWS_REGION
 
 
-def get_dynamodb_resource():
+def get_dynamodb_resource() -> Any:
     return boto3.resource("dynamodb", region_name=AWS_REGION)
 
 
-def get_last_processed_post_id(table_name, subreddit_key):
+def get_last_processed_post_id(table_name: str, subreddit_key: str) -> Optional[str]:
     dynamodb = get_dynamodb_resource()
-    table = dynamodb.Table(table_name)  # type: ignore[attr-defined]
+    table = dynamodb.Table(table_name)
     try:
         response = table.get_item(Key={"subreddit_key": subreddit_key})
         item = response.get("Item")
         if item and "last_processed_post_id" in item:
-            return item["last_processed_post_id"]
+            return str(item["last_processed_post_id"])
         else:
             print(
                 f"No last_processed_post_id found for {subreddit_key} in table {table_name}."
@@ -38,9 +41,11 @@ def get_last_processed_post_id(table_name, subreddit_key):
         return None
 
 
-def update_last_processed_post_id(table_name, subreddit_key, post_id):
+def update_last_processed_post_id(
+    table_name: str, subreddit_key: str, post_id: str
+) -> bool:
     dynamodb = get_dynamodb_resource()
-    table = dynamodb.Table(table_name)  # type: ignore[attr-defined]
+    table = dynamodb.Table(table_name)
     try:
         table.put_item(
             Item={
@@ -62,12 +67,12 @@ def update_last_processed_post_id(table_name, subreddit_key, post_id):
         return False
 
 
-def table_exists(table_name):
+def table_exists(table_name: str) -> bool:
     client = boto3.client("dynamodb", region_name=AWS_REGION)
     return table_name in client.list_tables()["TableNames"]
 
 
-def create_table_if_not_exists(table_name):
+def create_table_if_not_exists(table_name: str) -> None:
     client = boto3.client("dynamodb", region_name=AWS_REGION)
     if not table_exists(table_name):
         print(f"Table '{table_name}' does not exist. Creating it now...")
@@ -87,7 +92,7 @@ def create_table_if_not_exists(table_name):
         print(f"Table '{table_name}' already exists.")
 
 
-def delete_table_if_exists(table_name):
+def delete_table_if_exists(table_name: str) -> None:
     client = boto3.client("dynamodb", region_name=AWS_REGION)
     if table_exists(table_name):
         print(f"Deleting table '{table_name}'...")
@@ -99,10 +104,10 @@ def delete_table_if_exists(table_name):
         print(f"Table '{table_name}' does not exist.")
 
 
-def print_table_items(table_name):
+def print_table_items(table_name: str) -> None:
     """Prints all items in the specified DynamoDB table."""
     dynamodb = get_dynamodb_resource()
-    table = dynamodb.Table(table_name)  # type: ignore[attr-defined]
+    table = dynamodb.Table(table_name)
     try:
         response = table.scan()
         items = response.get("Items", [])
@@ -116,8 +121,6 @@ def print_table_items(table_name):
 
 
 if __name__ == "__main__":
-    import sys
-
     TEST_TABLE_NAME = "reddit_ingest_state_test"
     TEST_SUBREDDIT_KEY = "r/testsubreddit"
 
