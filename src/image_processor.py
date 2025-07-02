@@ -1,11 +1,18 @@
+"""Image processing and content type handling for media files.
+
+This module provides utilities for processing images, including content type detection,
+validation, and S3 upload preparation. It works in conjunction with Reddit scraping
+and AWS services to process and store media files.
+"""
+
+import asyncio
 import io
 import logging
 import os
-import time
 from typing import Any, Dict, List, Mapping, Optional, Tuple, cast
 from urllib.parse import urlparse
 
-import requests
+import aiohttp
 
 from config import (
     DYNAMODB_TABLE_NAME,
@@ -29,7 +36,24 @@ SUPPORTED_IMAGE_TYPES: Mapping[str, str] = MEDIA_PROCESSING_CONFIG["SUPPORTED_IM
 
 
 def _infer_content_type_from_url(url: str, original_content_type: str) -> Optional[str]:
-    """Infer content type from URL extension if not found in headers."""
+    """Infers the content type of a media file from its URL or original content type.
+
+    Attempts to determine the correct MIME type for a media file using either its
+    original content type (if supported) or by examining the file extension in the URL.
+
+    Args:
+        url (str): The URL of the media file to analyze.
+        original_content_type (str): The content type provided in the response headers
+            or metadata.
+
+    Returns:
+        Optional[str]: The inferred MIME type if successfully determined and supported,
+            None otherwise.
+
+    Note:
+        Supported image types are defined in MEDIA_PROCESSING_CONFIG["SUPPORTED_IMAGE_TYPES"].
+        Logs a warning if the content type cannot be determined or is unsupported.
+    """
     supported_types = SUPPORTED_IMAGE_TYPES
     if original_content_type in supported_types:
         return original_content_type
@@ -50,7 +74,7 @@ def _infer_content_type_from_url(url: str, original_content_type: str) -> Option
     return None
 
 
-def _handle_retry_logic(
+async def _handle_retry_logic_async(
     retry_count: int, retries: int, url: str, error: Exception
 ) -> Optional[int]:
     """Handle retry logic and logging for failed download attempts."""
@@ -60,24 +84,25 @@ def _handle_retry_logic(
         logging.warning(
             f"Download attempt {retry_count} failed for {url}: {error}. Retrying in {wait_time}s..."
         )
-        time.sleep(wait_time)
+        await asyncio.sleep(wait_time)
         return retry_count
     else:
         logging.error(f"All download attempts failed for {url}: {error}")
         return None
 
 
-def download_image(
-    url: str, retries: Optional[int] = None
+async def download_image_async(
+    session: aiohttp.ClientSession, url: str, retries: Optional[int] = None
 ) -> Tuple[Optional[io.BytesIO], Optional[str]]:
-    """Download an image from a URL with retries and enhanced error handling.
+    """Download an image from a URL with retries and enhanced error handling asynchronously.
 
     Args:
-        url (str): The URL to download from
-        retries (int): Number of retries for failed downloads
+        session (aiohttp.ClientSession): The aiohttp session to use for the request.
+        url (str): The URL to download from.
+        retries (int): Number of retries for failed downloads.
 
     Returns:
-        Tuple[Optional[io.BytesIO], Optional[str]]: (image_data, content_type) or (None, None) on failure
+        Tuple[Optional[io.BytesIO], Optional[str]]: (image_data, content_type) or (None, None) on failure.
     """
     if retries is None:
         retries = cast(int, MEDIA_PROCESSING_CONFIG["MAX_RETRIES"])
@@ -89,27 +114,34 @@ def download_image(
 
     while retry_count < retries:
         try:
-            response = requests.get(
+            timeout = aiohttp.ClientTimeout(
+                total=cast(float, MEDIA_PROCESSING_CONFIG["DOWNLOAD_TIMEOUT"])
+            )
+            async with session.get(
                 url,
                 headers=headers,
-                stream=True,
-                timeout=cast(float, MEDIA_PROCESSING_CONFIG["DOWNLOAD_TIMEOUT"]),
+                timeout=timeout,
+            ) as response:
+                response.raise_for_status()
+
+                original_content_type = (
+                    response.headers.get("Content-Type", "")
+                    .lower()
+                    .split(";")[0]
+                    .strip()
+                )
+
+                content_type = _infer_content_type_from_url(url, original_content_type)
+                if not content_type:
+                    return (None, None)
+
+                image_bytes = io.BytesIO(await response.read())
+                return (image_bytes, content_type)
+
+        except aiohttp.ClientError as e:
+            new_retry_count = await _handle_retry_logic_async(
+                retry_count, retries, url, e
             )
-            response.raise_for_status()
-
-            original_content_type = (
-                response.headers.get("Content-Type", "").lower().split(";")[0].strip()
-            )
-
-            content_type = _infer_content_type_from_url(url, original_content_type)
-            if not content_type:
-                return (None, None)
-
-            image_bytes = io.BytesIO(response.content)
-            return (image_bytes, content_type)
-
-        except requests.exceptions.RequestException as e:
-            new_retry_count = _handle_retry_logic(retry_count, retries, url, e)
             if new_retry_count is None:
                 return (None, None)
             retry_count = new_retry_count
@@ -118,7 +150,6 @@ def download_image(
             logging.error(f"An unexpected error occurred while downloading {url}: {e}")
             return (None, None)
 
-    # If we've exhausted all retries
     return (None, None)
 
 
@@ -188,7 +219,6 @@ def generate_s3_object_name(
         cleaned_base_name = _get_cleaned_base_name(
             parsed_url, base_name, extension, image_url
         )
-        # Updated to use subreddit parameter for better organization
         object_name = f"r_{subreddit}/{cleaned_post_id}/{domain_part}_{cleaned_base_name}{extension}"
         return object_name[:1000]
     except Exception as e:
@@ -198,12 +228,12 @@ def generate_s3_object_name(
         return f"r_{subreddit}/{post_id}/unknown_image_{hex(hash(image_url))[2:]}{SUPPORTED_IMAGE_TYPES.get(content_type, '.img')}"
 
 
-def _process_image_posts(
+async def _process_image_posts_async(
     new_posts_data: List[Tuple[str, str]],
     s3_bucket_name: str,
     subreddit: str = "translator",
 ) -> Tuple[int, int, Optional[str]]:
-    """Process a batch of image posts.
+    """Process a batch of image posts asynchronously.
 
     Args:
         new_posts_data (List[Tuple[str, str]]): List of (post_id, image_url) pairs
@@ -217,53 +247,49 @@ def _process_image_posts(
     failed_attempts = 0
     newest_id_in_batch = None
 
-    for post_id, image_url in new_posts_data:
-        logging.info(f"Processing Post ID: {post_id}, Image URL: {image_url}")
-        download_result = download_image(image_url)
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for post_id, image_url in new_posts_data:
+            tasks.append(asyncio.create_task(download_image_async(session, image_url)))
 
-        if download_result is None or download_result == (None, None):
-            logging.warning(
-                f"Skipping upload for Post ID: {post_id}, URL: {image_url} due to download error or unsupported type."
-            )
-            failed_attempts += 1
-            continue
+        download_results = await asyncio.gather(*tasks)
 
-        image_data, content_type = download_result
+        for i, (image_data, content_type) in enumerate(download_results):
+            post_id, image_url = new_posts_data[i]
+            if image_data and content_type:
+                object_name = generate_s3_object_name(
+                    post_id, image_url, content_type, subreddit
+                )
+                logging.info(
+                    f"Uploading '{object_name}' to S3 bucket '{s3_bucket_name}'..."
+                )
 
-        if image_data and content_type:
-            object_name = generate_s3_object_name(
-                post_id, image_url, content_type, subreddit
-            )
-            logging.info(
-                f"Uploading '{object_name}' to S3 bucket '{s3_bucket_name}'..."
-            )
-
-            image_data.seek(0)
-            if upload_fileobj_to_s3(image_data, s3_bucket_name, object_name):
-                logging.info(f"Successfully uploaded '{object_name}' to S3.")
-                successful_uploads += 1
-                newest_id_in_batch = post_id
+                image_data.seek(0)
+                if upload_fileobj_to_s3(image_data, s3_bucket_name, object_name):
+                    logging.info(f"Successfully uploaded '{object_name}' to S3.")
+                    successful_uploads += 1
+                    newest_id_in_batch = post_id
+                else:
+                    logging.error(
+                        f"Failed to upload '{object_name}' (from Post ID: {post_id}, URL: {image_url}) to S3."
+                    )
+                    failed_attempts += 1
             else:
-                logging.error(
-                    f"Failed to upload '{object_name}' (from Post ID: {post_id}, URL: {image_url}) to S3."
+                logging.warning(
+                    f"Skipping upload for Post ID: {post_id}, URL: {image_url} due to download error or unsupported type."
                 )
                 failed_attempts += 1
-        else:
-            logging.warning(
-                f"Skipping upload for Post ID: {post_id}, URL: {image_url} due to download error or unsupported type."
-            )
-            failed_attempts += 1
 
     return successful_uploads, failed_attempts, newest_id_in_batch
 
 
-def process_new_images_from_reddit(
+async def process_new_images_from_reddit_async(
     s3_bucket_name: str,
     dynamodb_table_name: str,
     subreddit_name: str = "translator",
     reddit_fetch_limit: int = 25,
 ) -> Dict[str, Any]:
-    """Process new images from specified subreddit and store in S3.
+    """Process new images from specified subreddit and store in S3 asynchronously.
 
     Args:
         s3_bucket_name (str): Target S3 bucket
@@ -310,9 +336,11 @@ def process_new_images_from_reddit(
     logging.info(
         f"Found {len(new_posts_data)} new image posts/URLs. Starting download and upload process..."
     )
-    successful_uploads, failed_attempts, newest_id_in_batch = _process_image_posts(
-        new_posts_data, s3_bucket_name, subreddit_name
-    )
+    (
+        successful_uploads,
+        failed_attempts,
+        newest_id_in_batch,
+    ) = await _process_image_posts_async(new_posts_data, s3_bucket_name, subreddit_name)
 
     # Update processing state
     if newest_id_in_batch:
@@ -381,57 +409,67 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     limit = event.get("fetch_limit", REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"])
 
-    # Process each subreddit
-    results = {}
-    total_processed = 0
-    total_failed = 0
+    async def process_all_subreddits() -> Dict[str, Any]:
+        results = {}
+        total_processed = 0
+        total_failed = 0
 
-    for subreddit in subreddits:
-        logging.info(f"Processing subreddit: r/{subreddit}")
-        result = process_new_images_from_reddit(
-            s3_bucket_name=s3_bucket,
-            dynamodb_table_name=ddb_table,
-            subreddit_name=subreddit,
-            reddit_fetch_limit=limit,
-        )
-        results[subreddit] = result
+        for subreddit in subreddits:
+            logging.info(f"Processing subreddit: r/{subreddit}")
+            result = await process_new_images_from_reddit_async(
+                s3_bucket_name=s3_bucket,
+                dynamodb_table_name=ddb_table,
+                subreddit_name=subreddit,
+                reddit_fetch_limit=limit,
+            )
+            results[subreddit] = result
 
-        if result.get("status") == "error":
-            # If any subreddit processing fails, return its error
-            return {
-                "statusCode": 500,
-                "body": {
-                    "status": "error",
-                    "message": result.get("message", "Something went wrong."),
-                },
-            }
+            if result.get("status") == "error":
+                return {
+                    "statusCode": 500,
+                    "body": {
+                        "status": "error",
+                        "message": result.get("message", "Something went wrong."),
+                    },
+                }
 
-        # Ensure we get integers for the counts
-        processed = int(result.get("processed_count", 0))
-        failed = int(result.get("failed_count", 0))
-        total_processed += processed
-        total_failed += failed
+            processed = int(result.get("processed_count", 0))
+            failed = int(result.get("failed_count", 0))
+            total_processed += processed
+            total_failed += failed
 
-    return {
-        "statusCode": 200,
-        "body": {
-            "status": "success",
-            "message": f"Processed {total_processed} images.",
-            "total_processed": total_processed,
-            "total_failed": total_failed,
-            "subreddit_results": results,
-        },
-    }
+        return {
+            "statusCode": 200,
+            "body": {
+                "status": "success",
+                "message": f"Processed {total_processed} images.",
+                "total_processed": total_processed,
+                "total_failed": total_failed,
+                "subreddit_results": results,
+            },
+        }
+
+    return asyncio.run(process_all_subreddits())
 
 
 if __name__ == "__main__":
     logging.info("Starting image processing script directly (not as Lambda)...")
-    # Example direct invocation with multiple subreddits:
-    result = lambda_handler(
-        event={
-            "subreddits": REDDIT_SCRAPING_CONFIG["SUBREDDITS"],
-            "fetch_limit": REDDIT_SCRAPING_CONFIG["POST_SEARCH_AMOUNT"],
-        },
-        context={},
-    )
-    logging.info(f"Direct script execution result: {result}")
+
+    async def main() -> None:
+        # Example direct invocation with multiple subreddits:
+        result = await asyncio.gather(
+            *(
+                process_new_images_from_reddit_async(
+                    s3_bucket_name=S3_IMAGE_BUCKET,
+                    dynamodb_table_name=DYNAMODB_TABLE_NAME,
+                    subreddit_name=subreddit,
+                    reddit_fetch_limit=cast(
+                        int, REDDIT_SCRAPING_CONFIG["POST_SEARCH_AMOUNT"]
+                    ),
+                )
+                for subreddit in cast(List[str], REDDIT_SCRAPING_CONFIG["SUBREDDITS"])
+            )
+        )
+        logging.info(f"Direct script execution result: {result}")
+
+    asyncio.run(main())

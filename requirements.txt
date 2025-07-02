@@ -3,3 +3,6 @@ praw
 requests
 python-dotenv
 beautifulsoup4
+aiohttp
+aiofiles
+asyncpraw

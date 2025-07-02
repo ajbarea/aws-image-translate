@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.5"
+    }
   }
 
   # Uncomment and configure for remote state storage
@@ -30,6 +34,8 @@ provider "aws" {
     }
   }
 }
+
+provider "local" {}
 
 # DynamoDB Table for Reddit state tracking
 module "dynamodb" {
@@ -162,4 +168,16 @@ resource "aws_iam_role_policy" "app_policy" {
       }
     ]
   })
+}
+
+resource "local_file" "frontend_config" {
+  content = templatefile("${path.module}/config.js.tpl", {
+    aws_region           = var.aws_region
+    user_pool_id         = module.cognito.user_pool_id
+    user_pool_web_client = module.cognito.user_pool_client_id
+    identity_pool_id     = module.cognito.identity_pool_id
+    bucket_name          = module.s3.bucket_name
+    api_gateway_url      = module.lambda.api_gateway_invoke_url
+  })
+  filename = "${path.root}/frontend/js/config.js"
 }
