@@ -8,6 +8,7 @@ const AWS_CONFIG = {
   identityPoolId: "${identity_pool_id}",
   bucketName: "${bucket_name}",
   apiGatewayUrl: "${api_gateway_url}",
+  lambdaFunctionName: "${lambda_function_name}",
 };
 console.log("📋 Config: AWS_CONFIG loaded:", AWS_CONFIG);
 

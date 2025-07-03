@@ -16,6 +16,11 @@ resource "aws_cognito_user_pool" "pool" {
   verification_message_template {
     default_email_option = "CONFIRM_WITH_CODE"
   }
+
+  # Lambda triggers for debugging confirmation codes
+  lambda_config {
+    custom_message = aws_lambda_function.cognito_triggers.arn
+  }
 }
 
 resource "aws_cognito_user_pool_client" "client" {

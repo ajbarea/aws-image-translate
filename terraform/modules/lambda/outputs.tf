@@ -10,12 +10,7 @@ output "lambda_function_name" {
   value       = aws_lambda_function.image_processor.function_name
 }
 
-output "api_gateway_url" {
-  description = "URL of the API Gateway"
-  value       = "${aws_api_gateway_rest_api.image_api.execution_arn}/prod"
-}
-
 output "api_gateway_invoke_url" {
   description = "Invoke URL of the API Gateway"
-  value       = "https://${aws_api_gateway_rest_api.image_api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com/prod"
+  value       = aws_apigatewayv2_api.image_api.api_endpoint
 }

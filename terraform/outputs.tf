@@ -53,6 +53,11 @@ output "api_gateway_url" {
   value       = module.lambda.api_gateway_invoke_url
 }
 
+output "api_gateway_invoke_url" {
+  description = "API Gateway invoke URL for image processing"
+  value       = module.lambda.api_gateway_invoke_url
+}
+
 # Integration Information
 output "integration_config" {
   description = "Configuration values for Python application and frontend integration"

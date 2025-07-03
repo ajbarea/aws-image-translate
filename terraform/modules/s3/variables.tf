@@ -20,5 +20,16 @@ variable "enable_versioning" {
 variable "allowed_origins" {
   description = "List of allowed origins for CORS"
   type        = list(string)
-  default     = ["http://localhost:8000"]
+  default     = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500"
+  ]
+}
+
+variable "force_destroy" {
+  description = "Whether to allow Terraform to destroy the bucket even if it contains objects"
+  type        = bool
+  default     = true
 }

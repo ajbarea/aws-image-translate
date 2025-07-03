@@ -18,5 +18,10 @@ variable "s3_bucket_arn" {
 variable "allowed_origins" {
   description = "List of allowed origins for CORS"
   type        = list(string)
-  default     = ["http://localhost:8000", "http://127.0.0.1:8000"]
+  default     = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500"
+  ]
 }

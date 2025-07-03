@@ -53,9 +53,12 @@ module "s3" {
   bucket_name       = var.s3_bucket_name
   enable_lifecycle  = true # Enable cost optimization
   enable_versioning = true # Enable object versioning
+  force_destroy     = true # Allow Terraform to delete bucket even if not empty
   allowed_origins = [
     "http://localhost:8000",
-    "http://127.0.0.1:8000"
+    "http://127.0.0.1:8000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500"
   ]
 }
 
@@ -76,7 +79,9 @@ module "lambda" {
   s3_bucket_arn  = module.s3.bucket_arn
   allowed_origins = [
     "http://localhost:8000",
-    "http://127.0.0.1:8000"
+    "http://127.0.0.1:8000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500"
   ]
 }
 
@@ -98,9 +103,9 @@ resource "aws_iam_role" "app_role" {
   })
 }
 
-resource "aws_iam_role_policy" "app_policy" {
-  name = "image-translate-policy"
-  role = aws_iam_role.app_role.id
+resource "aws_iam_policy" "app_policy" {
+  name        = "image-translate-policy"
+  description = "Policy for the main application to access AWS services"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -136,11 +141,6 @@ resource "aws_iam_role_policy" "app_policy" {
           "rekognition:DetectText"
         ]
         Resource = "*"
-        Condition = {
-          StringEquals = {
-            "aws:RequestedRegion" = var.aws_region
-          }
-        }
       },
       {
         Effect = "Allow"
@@ -148,11 +148,6 @@ resource "aws_iam_role_policy" "app_policy" {
           "comprehend:DetectDominantLanguage"
         ]
         Resource = "*"
-        Condition = {
-          StringEquals = {
-            "aws:RequestedRegion" = var.aws_region
-          }
-        }
       },
       {
         Effect = "Allow"
@@ -160,14 +155,14 @@ resource "aws_iam_role_policy" "app_policy" {
           "translate:TranslateText"
         ]
         Resource = "*"
-        Condition = {
-          StringEquals = {
-            "aws:RequestedRegion" = var.aws_region
-          }
-        }
       }
     ]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "app_policy_attachment" {
+  role       = aws_iam_role.app_role.name
+  policy_arn = aws_iam_policy.app_policy.arn
 }
 
 resource "local_file" "frontend_config" {
@@ -178,6 +173,7 @@ resource "local_file" "frontend_config" {
     identity_pool_id     = module.cognito.identity_pool_id
     bucket_name          = module.s3.bucket_name
     api_gateway_url      = module.lambda.api_gateway_invoke_url
+    lambda_function_name = module.lambda.lambda_function_name
   })
-  filename = "${path.root}/frontend/js/config.js"
+  filename = "${path.root}/../frontend/js/config.js"
 }

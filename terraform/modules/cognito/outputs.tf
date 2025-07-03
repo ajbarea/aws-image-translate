@@ -19,3 +19,8 @@ output "cognito_domain" {
   description = "Cognito domain"
   value       = aws_cognito_user_pool.pool.endpoint
 }
+
+output "cognito_triggers_lambda_arn" {
+  description = "ARN of the Cognito triggers Lambda function"
+  value       = aws_lambda_function.cognito_triggers.arn
+}
