@@ -1,4 +1,5 @@
 resource "aws_s3_bucket_cors_configuration" "images" {
+  count  = var.skip_default_cors ? 0 : 1
   bucket = aws_s3_bucket.images.id
 
   cors_rule {

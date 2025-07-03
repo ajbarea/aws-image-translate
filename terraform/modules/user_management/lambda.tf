@@ -12,7 +12,7 @@ resource "aws_lambda_function" "cognito_triggers" {
 # Archive the Lambda function code
 data "archive_file" "cognito_triggers_zip" {
   type        = "zip"
-  source_file = "${path.root}/../lambda/cognito_triggers.py"
+  source_file = "${var.cognito_triggers_file_path}"
   output_path = "${path.module}/cognito_triggers.zip"
 }
 

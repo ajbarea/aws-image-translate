@@ -72,3 +72,9 @@ variable "skip_frontend" {
   type        = bool
   default     = false
 }
+
+variable "additional_origins" {
+  description = "Additional origins to add to CORS (e.g., CloudFront URL)"
+  type        = list(string)
+  default     = []
+}

@@ -9,7 +9,7 @@ data "aws_caller_identity" "current" {}
 # ZIP the Lambda function code
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_dir  = "${path.root}/../lambda"
+  source_dir  = "${path.root}/../../../lambda"
   output_path = "${path.root}/lambda_function.zip"
 }
 
@@ -27,7 +27,7 @@ resource "aws_lambda_function" "image_processor" {
 
   environment {
     variables = {
-      S3_BUCKET = var.s3_bucket_name
+      S3_BUCKET = aws_s3_bucket.images.bucket
     }
   }
 
@@ -77,7 +77,10 @@ resource "aws_iam_policy" "lambda_policy" {
           "s3:GetObject",
           "s3:PutObject"
         ]
-        Resource = "${var.s3_bucket_arn}/*"
+        Resource = [
+          aws_s3_bucket.images.arn,
+          "${aws_s3_bucket.images.arn}/*"
+        ]
       },
       {
         Effect   = "Allow"
@@ -105,7 +108,7 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
 
 # S3 bucket notification to trigger Lambda
 resource "aws_s3_bucket_notification" "lambda_trigger" {
-  bucket = var.s3_bucket_name
+  bucket = aws_s3_bucket.images.bucket
 
   lambda_function {
     lambda_function_arn = aws_lambda_function.image_processor.arn
@@ -123,47 +126,5 @@ resource "aws_lambda_permission" "allow_s3" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.image_processor.function_name
   principal     = "s3.amazonaws.com"
-  source_arn    = var.s3_bucket_arn
-}
-
-# API Gateway (HTTP API) for direct Lambda invocation from frontend
-resource "aws_apigatewayv2_api" "image_api" {
-  name          = "${var.project_name}-image-api"
-  protocol_type = "HTTP"
-  description   = "API for image processing"
-
-  cors_configuration {
-    allow_origins = var.allowed_origins
-    allow_methods = ["POST", "OPTIONS"]
-    allow_headers = ["Content-Type", "Authorization", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token"]
-  }
-}
-
-resource "aws_apigatewayv2_stage" "api_stage" {
-  api_id      = aws_apigatewayv2_api.image_api.id
-  name        = "$default"
-  auto_deploy = true
-}
-
-resource "aws_apigatewayv2_integration" "lambda_integration" {
-  api_id           = aws_apigatewayv2_api.image_api.id
-  integration_type = "AWS_PROXY"
-
-  integration_uri    = aws_lambda_function.image_processor.invoke_arn
-  payload_format_version = "2.0"
-}
-
-resource "aws_apigatewayv2_route" "process_route" {
-  api_id    = aws_apigatewayv2_api.image_api.id
-  route_key = "POST /process"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
-}
-
-# Permission for API Gateway to invoke Lambda
-resource "aws_lambda_permission" "allow_api_gateway" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.image_processor.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.image_api.execution_arn}/*/*"
+  source_arn    = aws_s3_bucket.images.arn
 }

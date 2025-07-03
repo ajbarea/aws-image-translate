@@ -1,11 +1,11 @@
 # S3 module for image storage
 
 resource "aws_s3_bucket" "images" {
-  bucket        = var.bucket_name
+  bucket        = var.s3_bucket_name
   force_destroy = var.force_destroy
 
   tags = {
-    Name    = var.bucket_name
+    Name    = var.s3_bucket_name
     Purpose = "image-storage"
   }
 }
