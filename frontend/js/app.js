@@ -710,22 +710,30 @@ class ImageProcessor {
         `🔄 ImageProcessor: Re-translating ${item.file.name} to ${targetLanguage}`
       );
 
+      const requestBody = {
+        bucket: AWS_CONFIG.bucketName,
+        key: item.s3Key,
+        targetLanguage: targetLanguage,
+        detectedText: item.processingResults.detectedText,
+        detectedLanguage: item.processingResults.detectedLanguage || "en",
+      };
+
+      console.log(`📤 ImageProcessor: Request body:`, requestBody);
+
       // Call the existing /process endpoint with detected text and language
       const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/process`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          bucket: AWS_CONFIG.bucketName,
-          key: item.s3Key,
-          targetLanguage: targetLanguage,
-          detectedText: item.processingResults.detectedText,
-          detectedLanguage: item.processingResults.detectedLanguage || "en",
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log(`📥 ImageProcessor: Response status: ${response.status}`);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ ImageProcessor: Response error:`, errorText);
         throw new Error(
           `Translation failed: ${response.status} ${response.statusText}`
         );
@@ -745,20 +753,71 @@ class ImageProcessor {
         `❌ ImageProcessor: Translation error for ${item.file.name}:`,
         error
       );
+      // Show error to user
+      this.showError(`Translation failed: ${error.message}`);
     }
   }
 
   updateResultDisplay(item) {
-    // Find the existing result element and update it
+    // Find the existing result element and update only the translation section
     const resultElements = this.resultsDiv.querySelectorAll(".result-item");
     for (const resultElement of resultElements) {
       const title = resultElement.querySelector("h3");
       if (title && title.textContent === item.file.name) {
-        // Remove the old result and add the new one
-        resultElement.remove();
-        this.showResults(item);
+        // Find and update only the translation section
+        this.updateTranslationSection(resultElement, item);
         break;
       }
+    }
+  }
+
+  updateTranslationSection(resultElement, item) {
+    if (!item.processingResults) return;
+
+    const results =
+      typeof item.processingResults === "string"
+        ? JSON.parse(item.processingResults)
+        : item.processingResults;
+
+    // Find existing translation section
+    const existingTranslationDiv = resultElement.querySelector(
+      '[data-section="translation"]'
+    );
+
+    if (
+      results.translatedText &&
+      results.translatedText !== results.detectedText
+    ) {
+      const targetLang =
+        results.targetLanguage || this.targetLanguageSelect?.value || "en";
+      const targetLangName = this.getLanguageName(targetLang);
+
+      const translationHTML = `
+        <div data-section="translation" style="margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: 600; color: #FFB74D;">🔄 Translation (${targetLangName}):</span>
+          </div>
+          <div style="background: #2d3748; padding: 12px; border-radius: 6px; border-left: 3px solid #FFB74D; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4;">
+            ${results.translatedText}
+          </div>
+        </div>
+      `;
+
+      if (existingTranslationDiv) {
+        // Replace existing translation section
+        existingTranslationDiv.outerHTML = translationHTML;
+      } else {
+        // Add new translation section after detected language
+        const detectedLanguageDiv = resultElement.querySelector(
+          '[data-section="detected-language"]'
+        );
+        if (detectedLanguageDiv) {
+          detectedLanguageDiv.insertAdjacentHTML("afterend", translationHTML);
+        }
+      }
+    } else if (existingTranslationDiv) {
+      // Remove translation section if no translation needed
+      existingTranslationDiv.remove();
     }
   }
 
@@ -1007,7 +1066,7 @@ class ImageProcessor {
       if (results.detectedLanguage) {
         const detectedLangName = this.getLanguageName(results.detectedLanguage);
         resultHTML += `
-          <div style="margin-bottom: 16px;">
+          <div data-section="detected-language" style="margin-bottom: 16px;">
             <span style="font-weight: 600; color: #64B5F6;">🌍 Detected Language:</span>
             <span style="background: #1976D2; color: white; padding: 4px 12px; border-radius: 16px; margin-left: 8px; font-size: 0.9rem; font-weight: 500;">
               ${detectedLangName}
@@ -1024,7 +1083,7 @@ class ImageProcessor {
           results.targetLanguage || this.targetLanguageSelect?.value || "en";
         const targetLangName = this.getLanguageName(targetLang);
         resultHTML += `
-          <div style="margin-bottom: 16px;">
+          <div data-section="translation" style="margin-bottom: 16px;">
             <div style="display: flex; align-items: center; margin-bottom: 6px;">
               <span style="font-weight: 600; color: #FFB74D;">🔄 Translation (${targetLangName}):</span>
             </div>
