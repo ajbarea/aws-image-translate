@@ -710,16 +710,18 @@ class ImageProcessor {
         `🔄 ImageProcessor: Re-translating ${item.file.name} to ${targetLanguage}`
       );
 
-      // Call the translation API
-      const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/translate`, {
+      // Call the existing /process endpoint with detected text and language
+      const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/process`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: item.processingResults.detectedText,
-          sourceLanguage: item.processingResults.detectedLanguage || "auto",
+          bucket: AWS_CONFIG.bucketName,
+          key: item.s3Key,
           targetLanguage: targetLanguage,
+          detectedText: item.processingResults.detectedText,
+          detectedLanguage: item.processingResults.detectedLanguage || "en",
         }),
       });
 
@@ -1003,11 +1005,12 @@ class ImageProcessor {
       }
 
       if (results.detectedLanguage) {
+        const detectedLangName = this.getLanguageName(results.detectedLanguage);
         resultHTML += `
           <div style="margin-bottom: 16px;">
             <span style="font-weight: 600; color: #64B5F6;">🌍 Detected Language:</span>
             <span style="background: #1976D2; color: white; padding: 4px 12px; border-radius: 16px; margin-left: 8px; font-size: 0.9rem; font-weight: 500;">
-              ${results.detectedLanguage}
+              ${detectedLangName}
             </span>
           </div>
         `;
