@@ -13,44 +13,87 @@
     <link href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" rel="stylesheet">
     <!-- Custom styles -->
     <link href="css/styles.css" rel="stylesheet">
-    <!-- Hide duplicate login tab button to show only one login button -->
+    <!-- Custom inline styles -->
     <style>
-        #loginTab {
-            display: none !important;
+        .form-footer {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+        }
+
+        .header-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .header-section img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+
+        .header-section h1 {
+            margin: 0;
+            font-size: 2.5rem;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>AWS Image Translate</h1>
+        <div class="header-section">
+            <img src="logo.png" alt="AWS Image Translate Logo">
+            <h1>AWS Image Translate</h1>
+        </div>
         <p>Upload images to detect and translate text using AWS services</p>
 
         <div class="login-section" id="loginSection">
-            <div class="auth-tabs">
-                <button id="loginTab" class="tab-button active">Login</button>
-                <button id="registerTab" class="tab-button">Register</button>
-            </div>
-
             <!-- Login Form -->
             <div id="loginFormContainer" class="auth-form-container">
                 <h2>Login</h2>
                 <form id="loginForm">
-                    <input type="email" id="username" placeholder="Email" required>
-                    <input type="password" id="password" placeholder="Password" required>
+                    <input type="email" id="username" placeholder="Email" required autocomplete="email">
+                    <input type="password" id="password" placeholder="Password" required
+                        autocomplete="current-password">
                     <button type="submit">Login</button>
                 </form>
+                <div class="form-footer">
+                    <button type="button" id="goToRegisterBtn" class="secondary-button">Create Account</button>
+                </div>
             </div>
 
             <!-- Registration Form -->
             <div id="registerFormContainer" class="auth-form-container" style="display: none;">
                 <h2>Create Account</h2>
                 <form id="registerForm">
-                    <input type="email" id="registerEmail" placeholder="Email" required>
-                    <input type="password" id="registerPassword" placeholder="Password" required>
-                    <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                    <input type="email" id="registerEmail" placeholder="Email" required autocomplete="email">
+                    <input type="password" id="registerPassword" placeholder="Password" required
+                        autocomplete="new-password">
+                    <input type="password" id="confirmPassword" placeholder="Confirm Password" required
+                        autocomplete="new-password">
                     <button type="submit">Create Account</button>
                 </form>
+                <div class="form-footer">
+                    <button type="button" id="backToLoginFromRegister" class="secondary-button">← Return to
+                        Login</button>
+                </div>
                 <p class="password-requirements">
                     Password must be at least 8 characters with uppercase, lowercase, number, and symbol.
                 </p>
@@ -63,9 +106,9 @@
                     registration.
                 </p>
                 <form id="confirmationForm">
-                    <input type="email" id="confirmationEmail" placeholder="Email" readonly>
+                    <input type="email" id="confirmationEmail" placeholder="Email" readonly autocomplete="email">
                     <input type="text" id="confirmationCode" placeholder="Enter confirmation code" required
-                        maxlength="6" pattern="[0-9]{6}">
+                        maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code">
                     <button type="submit">Confirm Email</button>
                 </form>
                 <div class="confirmation-actions">
@@ -76,6 +119,50 @@
         </div>
 
         <div class="app-section" id="appSection" style="display: none">
+            <div class="language-selection" style="margin-bottom: 20px;">
+                <label for="targetLanguage" style="display: block; margin-bottom: 5px; font-weight: bold;">
+                    🌍 Translate to:
+                </label>
+                <select id="targetLanguage"
+                    style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-width: 200px; font-size: 14px;">
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="ko">Korean</option>
+                    <option value="zh">Chinese (Simplified)</option>
+                    <option value="zh-TW">Chinese (Traditional)</option>
+                    <option value="ar">Arabic</option>
+                    <option value="hi">Hindi</option>
+                    <option value="th">Thai</option>
+                    <option value="vi">Vietnamese</option>
+                    <option value="nl">Dutch</option>
+                    <option value="pl">Polish</option>
+                    <option value="tr">Turkish</option>
+                    <option value="sv">Swedish</option>
+                    <option value="da">Danish</option>
+                    <option value="no">Norwegian</option>
+                    <option value="fi">Finnish</option>
+                    <option value="cs">Czech</option>
+                    <option value="hu">Hungarian</option>
+                    <option value="ro">Romanian</option>
+                    <option value="bg">Bulgarian</option>
+                    <option value="hr">Croatian</option>
+                    <option value="sk">Slovak</option>
+                    <option value="sl">Slovenian</option>
+                    <option value="et">Estonian</option>
+                    <option value="lv">Latvian</option>
+                    <option value="lt">Lithuanian</option>
+                    <option value="mt">Maltese</option>
+                    <option value="ga">Irish</option>
+                    <option value="cy">Welsh</option>
+                </select>
+            </div>
+
             <div class="drop-zone" id="dropZone">
                 <p>Drop images here or click to select</p>
                 <input type="file" id="fileInput" multiple accept="image/*" style="display: none">

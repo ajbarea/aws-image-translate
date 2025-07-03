@@ -155,8 +155,6 @@ class ImageProcessor {
     console.log("🔐 ImageProcessor: Setting up authentication handlers...");
 
     // Cache DOM elements
-    const loginTab = document.getElementById("loginTab");
-    const registerTab = document.getElementById("registerTab");
     const loginFormContainer = document.getElementById("loginFormContainer");
     const registerFormContainer = document.getElementById(
       "registerFormContainer"
@@ -167,31 +165,27 @@ class ImageProcessor {
     const loginForm = document.getElementById("loginForm");
     const registerForm = document.getElementById("registerForm");
     const confirmationForm = document.getElementById("confirmationForm");
+    const goToRegisterBtn = document.getElementById("goToRegisterBtn");
+    const backToLoginFromRegister = document.getElementById(
+      "backToLoginFromRegister"
+    );
 
     if (!loginForm || !registerForm || !confirmationForm) {
-      console.error("❌ ImageProcessor: Authentication forms not found!");
+      console.error("❌ ImageProcessor: Required form elements not found");
       return;
     }
 
-    // Tab switching functionality
-    loginTab.addEventListener("click", () => {
-      loginTab.classList.add("active");
-      registerTab.classList.remove("active");
-      loginFormContainer.style.display = "block";
-      registerFormContainer.style.display = "none";
-      confirmationFormContainer.style.display = "none";
-      this.clearError();
-      this.clearSuccess();
-    });
-
-    registerTab.addEventListener("click", () => {
-      registerTab.classList.add("active");
-      loginTab.classList.remove("active");
+    // Form navigation buttons
+    goToRegisterBtn.addEventListener("click", () => {
       loginFormContainer.style.display = "none";
       registerFormContainer.style.display = "block";
       confirmationFormContainer.style.display = "none";
-      this.clearError();
-      this.clearSuccess();
+    });
+
+    backToLoginFromRegister.addEventListener("click", () => {
+      loginFormContainer.style.display = "block";
+      registerFormContainer.style.display = "none";
+      confirmationFormContainer.style.display = "none";
     });
 
     // Login form handler
@@ -389,12 +383,9 @@ class ImageProcessor {
   showConfirmationForm(email) {
     console.log("📧 ImageProcessor: Showing confirmation form for:", email);
 
-    // Hide tabs and other forms
-    document.querySelector(".auth-tabs").style.display = "none";
+    // Hide other forms and show confirmation form
     document.getElementById("loginFormContainer").style.display = "none";
     document.getElementById("registerFormContainer").style.display = "none";
-
-    // Show confirmation form
     document.getElementById("confirmationFormContainer").style.display =
       "block";
 
@@ -485,14 +476,10 @@ class ImageProcessor {
   }
 
   switchToLoginTab() {
-    // Show tabs again
-    document.querySelector(".auth-tabs").style.display = "flex";
-
-    // Hide confirmation form
+    // Show login form, hide others
+    document.getElementById("loginFormContainer").style.display = "block";
+    document.getElementById("registerFormContainer").style.display = "none";
     document.getElementById("confirmationFormContainer").style.display = "none";
-
-    // Click login tab to activate it
-    document.getElementById("loginTab").click();
   }
 
   showError(message) {
@@ -577,11 +564,13 @@ class ImageProcessor {
     this.uploadList = document.getElementById("uploadList");
     this.processBtn = document.getElementById("processBtn");
     this.resultsDiv = document.getElementById("results");
+    this.targetLanguageSelect = document.getElementById("targetLanguage");
 
     // Setup event listeners
     this.setupDragAndDrop();
     this.setupFileInput();
     this.setupProcessButton();
+    this.setupLanguageSelection();
   }
 
   setupDragAndDrop() {
@@ -619,6 +608,19 @@ class ImageProcessor {
     });
   }
 
+  setupLanguageSelection() {
+    if (this.targetLanguageSelect) {
+      this.targetLanguageSelect.addEventListener("change", async (e) => {
+        const selectedLanguage = e.target.value;
+        console.log(`🌍 ImageProcessor: Language changed to: ${selectedLanguage}`);
+
+        // Re-translate all existing results
+        console.log("🔄 ImageProcessor: Re-translating all results to:", selectedLanguage);
+        await this.retranslateAllResults(selectedLanguage);
+      });
+    }
+  }
+
   handleFiles(files) {
     for (const file of files) {
       if (file.type.startsWith("image/")) {
@@ -652,19 +654,136 @@ class ImageProcessor {
       const result = e.target.result;
       const imageSrc = typeof result === "string" ? result : "";
       li.innerHTML = `
-                <img src="${imageSrc}" alt="${item.file.name}">
-                <div class="details">
-                    <div>${item.file.name}</div>
-                    <div class="progress">
-                        <div class="progress-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-                <div class="status">Pending</div>
-            `;
+        <img src="${imageSrc}" alt="${item.file.name}">
+        <div class="details">
+          <div>${item.file.name}</div>
+          <div class="progress">
+            <div class="progress-bar" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="status">Pending</div>
+      `;
     };
     reader.readAsDataURL(item.file);
 
     this.uploadList.appendChild(li);
+  }
+
+  async retranslateAllResults(targetLanguage) {
+    console.log("📝 ImageProcessor: Starting re-translation process...");
+
+    // Find all completed items that have processing results
+    const completedItems = this.uploadQueue.filter(item =>
+      item.status === "complete" && item.processingResults
+    );
+
+    if (completedItems.length === 0) {
+      console.log("📝 ImageProcessor: No processed items to re-translate");
+      return;
+    }
+
+    console.log(`📝 ImageProcessor: Re-translating ${completedItems.length} items`);
+
+    // Re-translate each item
+    for (const item of completedItems) {
+      await this.retranslateItem(item, targetLanguage);
+    }
+  }
+
+  async retranslateItem(item, targetLanguage) {
+    if (!item.processingResults || !item.processingResults.detectedText) {
+      console.log(`📝 ImageProcessor: No detected text to translate for ${item.file.name}`);
+      return;
+    }
+
+    try {
+      console.log(`🔄 ImageProcessor: Re-translating ${item.file.name} to ${targetLanguage}`);
+
+      // Call the translation API
+      const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/translate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: item.processingResults.detectedText,
+          sourceLanguage: item.processingResults.detectedLanguage || "auto",
+          targetLanguage: targetLanguage,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Translation failed: ${response.status} ${response.statusText}`);
+      }
+
+      const translationResult = await response.json();
+      console.log("✅ ImageProcessor: Translation result:", translationResult);
+
+      // Update the item's processing results
+      item.processingResults.translatedText = translationResult.translatedText;
+      item.processingResults.targetLanguage = targetLanguage;
+
+      // Update the UI
+      this.updateResultDisplay(item);
+
+    } catch (error) {
+      console.error(`❌ ImageProcessor: Translation error for ${item.file.name}:`, error);
+    }
+  }
+
+  updateResultDisplay(item) {
+    // Find the existing result element and update it
+    const resultElements = this.resultsDiv.querySelectorAll('.result-item');
+    for (const resultElement of resultElements) {
+      const title = resultElement.querySelector('h3');
+      if (title && title.textContent === item.file.name) {
+        // Remove the old result and add the new one
+        resultElement.remove();
+        this.showResults(item);
+        break;
+      }
+    }
+  }
+
+  getLanguageName(languageCode) {
+    const languageMap = {
+      'en': 'English',
+      'es': 'Spanish',
+      'fr': 'French',
+      'de': 'German',
+      'it': 'Italian',
+      'pt': 'Portuguese',
+      'ru': 'Russian',
+      'ja': 'Japanese',
+      'ko': 'Korean',
+      'zh': 'Chinese (Simplified)',
+      'zh-TW': 'Chinese (Traditional)',
+      'ar': 'Arabic',
+      'hi': 'Hindi',
+      'th': 'Thai',
+      'vi': 'Vietnamese',
+      'nl': 'Dutch',
+      'pl': 'Polish',
+      'tr': 'Turkish',
+      'sv': 'Swedish',
+      'da': 'Danish',
+      'no': 'Norwegian',
+      'fi': 'Finnish',
+      'cs': 'Czech',
+      'hu': 'Hungarian',
+      'ro': 'Romanian',
+      'bg': 'Bulgarian',
+      'hr': 'Croatian',
+      'sk': 'Slovak',
+      'sl': 'Slovenian',
+      'et': 'Estonian',
+      'lv': 'Latvian',
+      'lt': 'Lithuanian',
+      'mt': 'Maltese',
+      'ga': 'Irish',
+      'cy': 'Welsh'
+    };
+    return languageMap[languageCode] || languageCode;
   }
 
   async processQueue() {
@@ -762,6 +881,9 @@ class ImageProcessor {
     console.log(`🚀 ImageProcessor: Calling Lambda to process ${s3Key}`);
 
     try {
+      // Get the selected target language
+      const targetLanguage = this.targetLanguageSelect ? this.targetLanguageSelect.value : 'en';
+
       // Call the API Gateway endpoint
       const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/process`, {
         method: "POST",
@@ -771,6 +893,7 @@ class ImageProcessor {
         body: JSON.stringify({
           bucket: AWS_CONFIG.bucketName,
           key: s3Key,
+          targetLanguage: targetLanguage
         }),
       });
 
@@ -859,9 +982,11 @@ class ImageProcessor {
         results.translatedText &&
         results.translatedText !== results.detectedText
       ) {
+        const targetLang = results.targetLanguage || this.targetLanguageSelect?.value || 'en';
+        const targetLangName = this.getLanguageName(targetLang);
         resultHTML += `
           <div style="margin-bottom: 12px;">
-            <strong>🔄 Translation (English):</strong>
+            <strong>🔄 Translation (${targetLangName}):</strong>
             <div style="background: white; padding: 8px; border-radius: 4px; margin-top: 4px; border-left: 4px solid #4caf50;">
               ${results.translatedText}
             </div>

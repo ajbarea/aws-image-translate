@@ -66,3 +66,9 @@ variable "frontend_path" {
   type        = string
   default     = "./frontend"
 }
+
+variable "skip_frontend" {
+  description = "Whether to skip the frontend deployment"
+  type        = bool
+  default     = false
+}

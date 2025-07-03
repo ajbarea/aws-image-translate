@@ -76,10 +76,10 @@ output "integration_config" {
 # Frontend URLs
 output "frontend_website_url" {
   description = "S3 website URL for the frontend"
-  value       = module.frontend.website_url
+  value       = var.skip_frontend ? null : module.frontend[0].website_url
 }
 
 output "frontend_cloudfront_url" {
   description = "CloudFront distribution URL for the frontend"
-  value       = module.frontend.cloudfront_url
+  value       = var.skip_frontend ? null : module.frontend[0].cloudfront_url
 }

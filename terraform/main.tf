@@ -39,6 +39,7 @@ provider "local" {}
 
 # Frontend deployment with S3 and CloudFront
 module "frontend" {
+  count  = var.skip_frontend ? 0 : 1
   source = "./modules/frontend"
 
   bucket_name   = var.frontend_bucket_name
