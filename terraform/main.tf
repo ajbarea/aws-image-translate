@@ -37,6 +37,15 @@ provider "aws" {
 
 provider "local" {}
 
+# Frontend deployment with S3 and CloudFront
+module "frontend" {
+  source = "./modules/frontend"
+
+  bucket_name   = var.frontend_bucket_name
+  environment   = var.environment
+  frontend_path = var.frontend_path
+}
+
 # DynamoDB Table for Reddit state tracking
 module "dynamodb" {
   source = "./modules/dynamodb"

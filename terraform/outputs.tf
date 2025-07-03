@@ -72,3 +72,14 @@ output "integration_config" {
     API_GATEWAY_URL     = module.lambda.api_gateway_invoke_url
   }
 }
+
+# Frontend URLs
+output "frontend_website_url" {
+  description = "S3 website URL for the frontend"
+  value       = module.frontend.website_url
+}
+
+output "frontend_cloudfront_url" {
+  description = "CloudFront distribution URL for the frontend"
+  value       = module.frontend.cloudfront_url
+}
