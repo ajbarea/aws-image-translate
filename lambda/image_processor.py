@@ -23,17 +23,35 @@ def lambda_handler(event, context):
             provided_detected_text = None
             provided_detected_language = None
         else:
-            # Direct invocation
-            bucket = event.get("bucket")
-            key = event.get("key")
-            target_language = event.get("targetLanguage", "en")
-            # Support for re-translation requests
-            provided_detected_text = event.get("detectedText")
-            provided_detected_language = event.get("detectedLanguage")
+            # API Gateway event - parse the body
+            if "body" in event and event["body"]:
+                # Parse the JSON body from API Gateway
+                body = (
+                    json.loads(event["body"])
+                    if isinstance(event["body"], str)
+                    else event["body"]
+                )
+                bucket = body.get("bucket")
+                key = body.get("key")
+                target_language = body.get("targetLanguage", "en")
+                provided_detected_text = body.get("detectedText")
+                provided_detected_language = body.get("detectedLanguage")
+            else:
+                # Direct invocation (for testing)
+                bucket = event.get("bucket")
+                key = event.get("key")
+                target_language = event.get("targetLanguage", "en")
+                provided_detected_text = event.get("detectedText")
+                provided_detected_language = event.get("detectedLanguage")
 
         if not bucket or not key:
             return {
                 "statusCode": 400,
+                "headers": {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                    "Access-Control-Allow-Methods": "POST",
+                },
                 "body": json.dumps({"error": "Missing bucket or key parameter"}),
             }
 
@@ -63,7 +81,7 @@ def lambda_handler(event, context):
                 for text in rekognition_response["TextDetections"]
                 if text["Type"] == "LINE"
             ]
-            
+
             detected_text = " ".join(detected_lines)
 
             if not detected_text:
@@ -88,7 +106,9 @@ def lambda_handler(event, context):
             # Step 2: Detect language using Comprehend
             print(f"Detected text: {detected_text}")
 
-            comprehend_response = comprehend.detect_dominant_language(Text=detected_text)
+            comprehend_response = comprehend.detect_dominant_language(
+                Text=detected_text
+            )
             detected_language = comprehend_response["Languages"][0]["LanguageCode"]
 
             print(f"Detected language: {detected_language}")
@@ -104,7 +124,9 @@ def lambda_handler(event, context):
             translated_text = translate_response["TranslatedText"]
             print(f"Translated text to {target_language}: {translated_text}")
         else:
-            print(f"Text is already in target language ({target_language}), no translation needed")
+            print(
+                f"Text is already in target language ({target_language}), no translation needed"
+            )
 
         # Return the results
         return {

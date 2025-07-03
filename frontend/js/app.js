@@ -898,9 +898,16 @@ class ImageProcessor {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Lambda processing failed: ${response.status} ${response.statusText}`
-        );
+        // Get the actual error response
+        let errorMessage = `Lambda processing failed: ${response.status} ${response.statusText}`;
+        try {
+          const errorBody = await response.text();
+          console.error("❌ ImageProcessor: Lambda error response:", errorBody);
+          errorMessage += ` - ${errorBody}`;
+        } catch (e) {
+          console.error("❌ ImageProcessor: Could not read error response body");
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
