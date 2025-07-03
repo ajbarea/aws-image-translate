@@ -30,17 +30,32 @@ Your AWS credentials need the following permissions:
 
 ## 🔧 Architecture Overview
 
-```text
-┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
-│   Python App   │───▶│  S3 Bucket   │───▶│  AWS Services   │
-│                 │    │  (Images)    │    │ - Rekognition   │
-└─────────────────┘    └──────────────┘    │ - Translate     │
-         │                                  └─────────────────┘
-         ▼
-┌─────────────────┐
-│ DynamoDB Table  │
-│ (Reddit State)  │
-└─────────────────┘
+```mermaid
+flowchart TD
+  subgraph terraform [terraform/]
+    direction TB
+    A[main.tf<br>variables.tf<br>outputs.tf] --> B[modules/]
+    A --> C[frontend/]
+  end
+
+  subgraph modules [modules/]
+    direction LR
+    M1[cognito/]
+    M2[dynamodb/]
+    M3[s3/]
+    M4[lambda/]
+    M5[frontend/]
+  end
+
+  subgraph frontend [frontend/]
+    direction LR
+    F1[index.html<br>css/…<br>js/…]
+    F2[js/config.js]
+  end
+
+  B --> M1 & M2 & M3 & M4 & M5
+  C --> F1 & F2
+  M5 --> F2
 ```
 
 ## 📋 Prerequisites

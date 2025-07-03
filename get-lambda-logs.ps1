@@ -10,13 +10,13 @@ Write-Host "📅 Since: $((Get-Date).AddMinutes(-10).ToString('yyyy-MM-dd HH:mm:
 try {
     # Get recent log events
     $LogEvents = aws logs filter-log-events --log-group-name $LogGroupName --start-time $StartTime --output json | ConvertFrom-Json
-    
+
     if ($LogEvents.events.Count -eq 0) {
         Write-Host "⚠️  No recent log events found" -ForegroundColor Yellow
     } else {
         Write-Host "📋 Found $($LogEvents.events.Count) recent log events:" -ForegroundColor Green
         Write-Host ""
-        
+
         foreach ($event in $LogEvents.events | Sort-Object timestamp) {
             $timestamp = [DateTimeOffset]::FromUnixTimeMilliseconds($event.timestamp).ToString('yyyy-MM-dd HH:mm:ss')
             Write-Host "[$timestamp] $($event.message)" -ForegroundColor White

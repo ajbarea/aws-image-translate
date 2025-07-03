@@ -98,7 +98,7 @@ resource "aws_cloudfront_distribution" "website" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id      = "S3-${var.bucket_name}"
     viewer_protocol_policy = "redirect-to-https"
-    
+
     forwarded_values {
       query_string = false
       cookies {

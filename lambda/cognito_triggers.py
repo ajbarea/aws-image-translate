@@ -50,9 +50,7 @@ If you didn't request this code, please ignore this email.
         code_placeholder = event.get("request", {}).get("codeParameter")
 
         # Log the resent confirmation code
-        logger.info(
-            f"🔐 RESENT EMAIL CONFIRMATION CODE FOR {email}: {code_placeholder}"
-        )
+        logger.info(f"🔐 RESENT EMAIL CONFIRMATION CODE FOR {email}: {code_placeholder}")
         logger.info(f"📧 User Email: {email}")
         logger.info(f"🎯 Trigger Source: {event.get('triggerSource')}")
 
