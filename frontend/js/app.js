@@ -967,14 +967,21 @@ class ImageProcessor {
     const result = document.createElement("div");
     result.className = "result-item";
     result.style.cssText = `
-      border: 1px solid #ddd;
-      padding: 16px;
+      background: #4a5568;
+      color: white;
+      border: 1px solid #718096;
+      padding: 20px;
       margin-bottom: 16px;
-      border-radius: 8px;
-      background: #f9f9f9;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: left;
     `;
 
-    let resultHTML = `<h3>${item.file.name}</h3>`;
+    let resultHTML = `
+      <div style="display: flex; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #718096;">
+        <h3 style="margin: 0; color: #ffffff; font-size: 1.2rem; font-weight: 600;">${item.file.name}</h3>
+      </div>
+    `;
 
     if (item.processingResults) {
       const results =
@@ -984,9 +991,11 @@ class ImageProcessor {
 
       if (results.detectedText) {
         resultHTML += `
-          <div style="margin-bottom: 12px;">
-            <strong>🔍 Detected Text:</strong>
-            <div style="background: white; padding: 8px; border-radius: 4px; margin-top: 4px;">
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; margin-bottom: 6px;">
+              <span style="font-weight: 600; color: #81C784;">🔍 Detected Text:</span>
+            </div>
+            <div style="background: #2d3748; padding: 12px; border-radius: 6px; border-left: 3px solid #81C784; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4;">
               ${results.detectedText || "No text detected"}
             </div>
           </div>
@@ -995,9 +1004,9 @@ class ImageProcessor {
 
       if (results.detectedLanguage) {
         resultHTML += `
-          <div style="margin-bottom: 12px;">
-            <strong>🌍 Detected Language:</strong>
-            <span style="background: #e3f2fd; padding: 2px 8px; border-radius: 12px;">
+          <div style="margin-bottom: 16px;">
+            <span style="font-weight: 600; color: #64B5F6;">🌍 Detected Language:</span>
+            <span style="background: #1976D2; color: white; padding: 4px 12px; border-radius: 16px; margin-left: 8px; font-size: 0.9rem; font-weight: 500;">
               ${results.detectedLanguage}
             </span>
           </div>
@@ -1012,9 +1021,11 @@ class ImageProcessor {
           results.targetLanguage || this.targetLanguageSelect?.value || "en";
         const targetLangName = this.getLanguageName(targetLang);
         resultHTML += `
-          <div style="margin-bottom: 12px;">
-            <strong>🔄 Translation (${targetLangName}):</strong>
-            <div style="background: white; padding: 8px; border-radius: 4px; margin-top: 4px; border-left: 4px solid #4caf50;">
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; margin-bottom: 6px;">
+              <span style="font-weight: 600; color: #FFB74D;">🔄 Translation (${targetLangName}):</span>
+            </div>
+            <div style="background: #2d3748; padding: 12px; border-radius: 6px; border-left: 3px solid #FFB74D; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4;">
               ${results.translatedText}
             </div>
           </div>
@@ -1023,22 +1034,24 @@ class ImageProcessor {
 
       if (results.bucket && results.key) {
         resultHTML += `
-          <div style="margin-top: 12px; font-size: 12px; color: #666;">
-            📁 S3 Location: s3://${results.bucket}/${results.key}
+          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #718096;">
+            <span style="font-size: 0.85rem; color: #A0AEC0; font-family: 'Courier New', monospace;">
+              📁 S3 Location: s3://${results.bucket}/${results.key}
+            </span>
           </div>
         `;
       }
     } else {
       resultHTML += `
-        <p style="color: #666; font-style: italic;">
+        <div style="text-align: center; padding: 20px; color: #A0AEC0; font-style: italic;">
           Processing completed but no detailed results available.
-        </p>
+        </div>
       `;
     }
 
     if (item.error) {
       resultHTML += `
-        <div style="background: #ffebee; color: #c62828; padding: 8px; border-radius: 4px; margin-top: 8px;">
+        <div style="background: #E53E3E; color: white; padding: 12px; border-radius: 6px; margin-top: 12px; border-left: 3px solid #C53030;">
           ❌ Error: ${item.error}
         </div>
       `;
