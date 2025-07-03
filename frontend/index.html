@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AWS Image Translate</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <!-- AWS SDK -->
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1691.0.min.js"></script>
     <script
@@ -52,6 +54,74 @@
         .header-section h1 {
             margin: 0;
             font-size: 2.5rem;
+        }
+
+        /* Darker background sections */
+        #userInfo>div {
+            background: #2d3748 !important;
+            color: white !important;
+            border: 1px solid #4a5568 !important;
+        }
+
+        #userInfo button {
+            background: #dc3545 !important;
+            color: white !important;
+        }
+
+        #userInfo button:hover {
+            background: #c82333 !important;
+        }
+
+        .language-selection {
+            background: #2d3748 !important;
+            color: white !important;
+            padding: 15px !important;
+            border-radius: 8px !important;
+            margin-bottom: 20px !important;
+            text-align: center !important;
+        }
+
+        .language-selection label {
+            color: white !important;
+            display: block !important;
+            margin-bottom: 8px !important;
+        }
+
+        .language-selection select {
+            margin: 0 auto !important;
+            display: block !important;
+        }
+
+        .results {
+            background: #2d3748 !important;
+            color: white !important;
+            padding: 20px !important;
+            border-radius: 8px !important;
+        }
+
+        .results .result-item {
+            background: #4a5568 !important;
+            color: white !important;
+            border: 1px solid #718096 !important;
+        }
+
+        .results .result-item h3 {
+            color: white !important;
+        }
+
+        .results .result-item div[style*="background: white"] {
+            background: #1a202c !important;
+            color: white !important;
+            border: 1px solid #2d3748 !important;
+        }
+
+        .results .result-item div[style*="background: #e3f2fd"] {
+            background: #2c5282 !important;
+            color: white !important;
+        }
+
+        .results .result-item div[style*="color: #666"] {
+            color: #cbd5e0 !important;
         }
     </style>
 </head>

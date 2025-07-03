@@ -89,8 +89,8 @@ class ImageProcessor {
     const userInfoDiv = document.createElement("div");
     userInfoDiv.id = "userInfo";
     userInfoDiv.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px; background: #ffffff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="color: #000000 !important; font-weight: bold;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px; background: #2d3748; border: 1px solid #4a5568; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        <div style="color: #ffffff !important; font-weight: bold;">
           Welcome, ${userInfo.attributes.email || userInfo.username}!
         </div>
         <button id="logoutBtn" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; font-weight: bold;" onmouseover="this.style.backgroundColor='#c82333'" onmouseout="this.style.backgroundColor='#dc3545'">
@@ -612,10 +612,15 @@ class ImageProcessor {
     if (this.targetLanguageSelect) {
       this.targetLanguageSelect.addEventListener("change", async (e) => {
         const selectedLanguage = e.target.value;
-        console.log(`🌍 ImageProcessor: Language changed to: ${selectedLanguage}`);
+        console.log(
+          `🌍 ImageProcessor: Language changed to: ${selectedLanguage}`
+        );
 
         // Re-translate all existing results
-        console.log("🔄 ImageProcessor: Re-translating all results to:", selectedLanguage);
+        console.log(
+          "🔄 ImageProcessor: Re-translating all results to:",
+          selectedLanguage
+        );
         await this.retranslateAllResults(selectedLanguage);
       });
     }
@@ -673,8 +678,8 @@ class ImageProcessor {
     console.log("📝 ImageProcessor: Starting re-translation process...");
 
     // Find all completed items that have processing results
-    const completedItems = this.uploadQueue.filter(item =>
-      item.status === "complete" && item.processingResults
+    const completedItems = this.uploadQueue.filter(
+      (item) => item.status === "complete" && item.processingResults
     );
 
     if (completedItems.length === 0) {
@@ -682,7 +687,9 @@ class ImageProcessor {
       return;
     }
 
-    console.log(`📝 ImageProcessor: Re-translating ${completedItems.length} items`);
+    console.log(
+      `📝 ImageProcessor: Re-translating ${completedItems.length} items`
+    );
 
     // Re-translate each item
     for (const item of completedItems) {
@@ -692,12 +699,16 @@ class ImageProcessor {
 
   async retranslateItem(item, targetLanguage) {
     if (!item.processingResults || !item.processingResults.detectedText) {
-      console.log(`📝 ImageProcessor: No detected text to translate for ${item.file.name}`);
+      console.log(
+        `📝 ImageProcessor: No detected text to translate for ${item.file.name}`
+      );
       return;
     }
 
     try {
-      console.log(`🔄 ImageProcessor: Re-translating ${item.file.name} to ${targetLanguage}`);
+      console.log(
+        `🔄 ImageProcessor: Re-translating ${item.file.name} to ${targetLanguage}`
+      );
 
       // Call the translation API
       const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/translate`, {
@@ -713,7 +724,9 @@ class ImageProcessor {
       });
 
       if (!response.ok) {
-        throw new Error(`Translation failed: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Translation failed: ${response.status} ${response.statusText}`
+        );
       }
 
       const translationResult = await response.json();
@@ -725,17 +738,19 @@ class ImageProcessor {
 
       // Update the UI
       this.updateResultDisplay(item);
-
     } catch (error) {
-      console.error(`❌ ImageProcessor: Translation error for ${item.file.name}:`, error);
+      console.error(
+        `❌ ImageProcessor: Translation error for ${item.file.name}:`,
+        error
+      );
     }
   }
 
   updateResultDisplay(item) {
     // Find the existing result element and update it
-    const resultElements = this.resultsDiv.querySelectorAll('.result-item');
+    const resultElements = this.resultsDiv.querySelectorAll(".result-item");
     for (const resultElement of resultElements) {
-      const title = resultElement.querySelector('h3');
+      const title = resultElement.querySelector("h3");
       if (title && title.textContent === item.file.name) {
         // Remove the old result and add the new one
         resultElement.remove();
@@ -747,41 +762,41 @@ class ImageProcessor {
 
   getLanguageName(languageCode) {
     const languageMap = {
-      'en': 'English',
-      'es': 'Spanish',
-      'fr': 'French',
-      'de': 'German',
-      'it': 'Italian',
-      'pt': 'Portuguese',
-      'ru': 'Russian',
-      'ja': 'Japanese',
-      'ko': 'Korean',
-      'zh': 'Chinese (Simplified)',
-      'zh-TW': 'Chinese (Traditional)',
-      'ar': 'Arabic',
-      'hi': 'Hindi',
-      'th': 'Thai',
-      'vi': 'Vietnamese',
-      'nl': 'Dutch',
-      'pl': 'Polish',
-      'tr': 'Turkish',
-      'sv': 'Swedish',
-      'da': 'Danish',
-      'no': 'Norwegian',
-      'fi': 'Finnish',
-      'cs': 'Czech',
-      'hu': 'Hungarian',
-      'ro': 'Romanian',
-      'bg': 'Bulgarian',
-      'hr': 'Croatian',
-      'sk': 'Slovak',
-      'sl': 'Slovenian',
-      'et': 'Estonian',
-      'lv': 'Latvian',
-      'lt': 'Lithuanian',
-      'mt': 'Maltese',
-      'ga': 'Irish',
-      'cy': 'Welsh'
+      en: "English",
+      es: "Spanish",
+      fr: "French",
+      de: "German",
+      it: "Italian",
+      pt: "Portuguese",
+      ru: "Russian",
+      ja: "Japanese",
+      ko: "Korean",
+      zh: "Chinese (Simplified)",
+      "zh-TW": "Chinese (Traditional)",
+      ar: "Arabic",
+      hi: "Hindi",
+      th: "Thai",
+      vi: "Vietnamese",
+      nl: "Dutch",
+      pl: "Polish",
+      tr: "Turkish",
+      sv: "Swedish",
+      da: "Danish",
+      no: "Norwegian",
+      fi: "Finnish",
+      cs: "Czech",
+      hu: "Hungarian",
+      ro: "Romanian",
+      bg: "Bulgarian",
+      hr: "Croatian",
+      sk: "Slovak",
+      sl: "Slovenian",
+      et: "Estonian",
+      lv: "Latvian",
+      lt: "Lithuanian",
+      mt: "Maltese",
+      ga: "Irish",
+      cy: "Welsh",
     };
     return languageMap[languageCode] || languageCode;
   }
@@ -882,7 +897,9 @@ class ImageProcessor {
 
     try {
       // Get the selected target language
-      const targetLanguage = this.targetLanguageSelect ? this.targetLanguageSelect.value : 'en';
+      const targetLanguage = this.targetLanguageSelect
+        ? this.targetLanguageSelect.value
+        : "en";
 
       // Call the API Gateway endpoint
       const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/process`, {
@@ -893,7 +910,7 @@ class ImageProcessor {
         body: JSON.stringify({
           bucket: AWS_CONFIG.bucketName,
           key: s3Key,
-          targetLanguage: targetLanguage
+          targetLanguage: targetLanguage,
         }),
       });
 
@@ -905,7 +922,9 @@ class ImageProcessor {
           console.error("❌ ImageProcessor: Lambda error response:", errorBody);
           errorMessage += ` - ${errorBody}`;
         } catch (e) {
-          console.error("❌ ImageProcessor: Could not read error response body");
+          console.error(
+            "❌ ImageProcessor: Could not read error response body"
+          );
         }
         throw new Error(errorMessage);
       }
@@ -989,7 +1008,8 @@ class ImageProcessor {
         results.translatedText &&
         results.translatedText !== results.detectedText
       ) {
-        const targetLang = results.targetLanguage || this.targetLanguageSelect?.value || 'en';
+        const targetLang =
+          results.targetLanguage || this.targetLanguageSelect?.value || "en";
         const targetLangName = this.getLanguageName(targetLang);
         resultHTML += `
           <div style="margin-bottom: 12px;">
