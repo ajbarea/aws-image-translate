@@ -373,19 +373,3 @@ def get_project_root_path() -> str:
         str: Absolute path to the project root directory
     """
     return str(Path(__file__).parent.parent.absolute())
-
-
-def create_folder(path: PathLike, exist_ok: bool = True) -> None:
-    """Create a folder and its parents if they don't exist.
-
-    Args:
-        path: Path to the folder to create
-        exist_ok: If True, don't raise an error if folder exists
-
-    Raises:
-        MediaError: If folder creation fails
-    """
-    try:
-        os.makedirs(path, exist_ok=exist_ok)
-    except OSError as e:
-        raise MediaError(f"Failed to create folder {path}: {e}")
