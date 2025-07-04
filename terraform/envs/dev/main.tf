@@ -1,4 +1,5 @@
 # Test comment for Terraform Cloud integration - July 4, 2025
+# Working directory fix test - auto-apply enabled
 provider "aws" {
   region = var.region
 }
