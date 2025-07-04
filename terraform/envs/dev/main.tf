@@ -2,23 +2,6 @@ provider "aws" {
   region = var.region
 }
 
-# Test S3 bucket to verify Terraform Cloud is working
-resource "aws_s3_bucket" "test_bucket" {
-  bucket = "terraform-cloud-test-${random_string.bucket_suffix.result}"
-  
-  tags = {
-    Name        = "Terraform Cloud Test"
-    Environment = "dev"
-    Purpose     = "integration-test"
-  }
-}
-
-resource "random_string" "bucket_suffix" {
-  length  = 8
-  special = false
-  upper   = false
-}
-
 # User Management Module
 module "user_management" {
   source = "../../modules/user_management"
