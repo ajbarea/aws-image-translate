@@ -1,3 +1,4 @@
+# Test comment for Terraform Cloud integration - July 4, 2025
 provider "aws" {
   region = var.region
 }
