@@ -27,7 +27,7 @@ variable "s3_bucket_name" {
 variable "frontend_bucket_name" {
   description = "Name of S3 bucket for website hosting"
   type        = string
-  default     = "aws-image-translate-dev-frontend-hosting"
+  default     = "aj-aws-image-translate-dev-frontend-hosting"
 }
 
 variable "dynamodb_table_name" {
