@@ -240,3 +240,4 @@ terraform/tfplan
 terraform/frontend/js/config.js
 /frontend/js/config.js
 terraform/modules/cognito/cognito_triggers.zip
+task.md
