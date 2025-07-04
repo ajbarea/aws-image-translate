@@ -35,6 +35,20 @@ def test_get_file_extension():
         get_file_extension(None)
 
 
+def test_get_file_extension_empty_path():
+    assert get_file_extension("https://example.com") == "jpg"
+    assert get_file_extension("https://example.com/") == "jpg"
+
+
+def test_get_file_extension_parsing_error():
+    with patch("src.enhanced_media_utils.urlparse") as mock_urlparse:
+        mock_urlparse.side_effect = ValueError("Invalid URL")
+        assert get_file_extension("https://example.com/image.jpg") == "jpg"
+
+        mock_urlparse.side_effect = AttributeError("Missing attribute")
+        assert get_file_extension("https://example.com/image.jpg") == "jpg"
+
+
 def test_is_supported_extension():
     assert is_supported_extension("jpg")
     assert is_supported_extension(".jpg")

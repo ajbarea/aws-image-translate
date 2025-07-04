@@ -234,10 +234,10 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
-
 .terraform.lock.hcl
 terraform/tfplan
-terraform/frontend/js/config.js
-/frontend/js/config.js
-terraform/modules/cognito/cognito_triggers.zip
-task.md
+CLAUDE.md
+.claude
+GEMINI.md
+config.js
+uncovered

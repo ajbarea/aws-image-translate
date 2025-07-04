@@ -146,6 +146,24 @@ def test_get_aws_error_message_without_message():
     assert "An error occurred" in msg or "ClientError" in msg
 
 
+def test_get_aws_error_message_exception_handling():
+    """Test the exception handling in get_aws_error_message when response parsing fails."""
+
+    # Create a mock ClientError that raises an exception when accessing response
+    class MockClientError(ClientError):
+        def __init__(self):
+            # Don't call super().__init__ to avoid parameter issues
+            pass
+
+        @property
+        def response(self):
+            raise RuntimeError("Response parsing failed")
+
+    mock_error = MockClientError()
+    msg = get_aws_error_message(mock_error)
+    assert msg == "Unknown error occurred"
+
+
 # Tests for print_table_items
 @mock_dynamodb
 def test_print_table_items_empty(capsys, aws_credentials):
