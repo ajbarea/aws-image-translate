@@ -1,3 +1,4 @@
+# pragma: no cover
 """
 AWS Resource Cleanup Script
 

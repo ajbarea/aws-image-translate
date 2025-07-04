@@ -6,7 +6,7 @@ in Reddit ingestion pipelines or similar workflows.
 """
 
 import sys
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import boto3
 from botocore.exceptions import ClientError
@@ -21,7 +21,9 @@ def get_dynamodb_resource() -> DynamoDBServiceResource:
     Returns:
         DynamoDBServiceResource: A boto3 DynamoDB resource configured with the default AWS region.
     """
-    return boto3.resource("dynamodb", region_name=AWS_REGION)
+    return cast(
+        DynamoDBServiceResource, boto3.resource("dynamodb", region_name=AWS_REGION)
+    )
 
 
 def get_last_processed_post_id(table_name: str, subreddit_key: str) -> Optional[str]:
