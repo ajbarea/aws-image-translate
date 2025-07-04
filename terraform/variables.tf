@@ -1,38 +1,11 @@
-# Input variables for the AWS Image Translation infrastructure
+# terraform/variables.tf
 
-variable "aws_region" {
+variable "region" {
   description = "AWS region for resources"
   type        = string
   default     = "us-east-1"
-
-  validation {
-    condition     = can(regex("^[a-z0-9-]+$", var.aws_region))
-    error_message = "AWS region must be a valid region identifier."
-  }
 }
 
-variable "dynamodb_table_name" {
-  description = "Name of the DynamoDB table for Reddit state tracking"
-  type        = string
-  default     = "reddit-ingest-state"
-
-  validation {
-    condition     = can(regex("^[a-zA-Z0-9_.-]+$", var.dynamodb_table_name))
-    error_message = "DynamoDB table name must contain only alphanumeric characters, hyphens, periods, and underscores."
-  }
-}
-
-variable "s3_bucket_name" {
-  description = "Name of the S3 bucket for image storage (must be globally unique)"
-  type        = string
-
-  validation {
-    condition     = can(regex("^[a-z0-9.-]+$", var.s3_bucket_name)) && length(var.s3_bucket_name) >= 3 && length(var.s3_bucket_name) <= 63
-    error_message = "S3 bucket name must be 3-63 characters, contain only lowercase letters, numbers, hyphens, and periods."
-  }
-}
-
-# Optional: Project tagging
 variable "project_name" {
   description = "Name of the project for resource tagging"
   type        = string
@@ -43,38 +16,32 @@ variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
   default     = "dev"
-
-  validation {
-    condition     = contains(["dev", "staging", "prod"], var.environment)
-    error_message = "Environment must be one of: dev, staging, prod."
-  }
 }
 
-# Frontend Configuration
+variable "s3_bucket_name" {
+  description = "Name of the S3 bucket for image storage (must be globally unique)"
+  type        = string
+}
+
 variable "frontend_bucket_name" {
   description = "Name of S3 bucket for website hosting"
   type        = string
+}
 
-  validation {
-    condition     = can(regex("^[a-z0-9.-]+$", var.frontend_bucket_name)) && length(var.frontend_bucket_name) >= 3 && length(var.frontend_bucket_name) <= 63
-    error_message = "Frontend bucket name must be 3-63 characters, contain only lowercase letters, numbers, hyphens, and periods."
-  }
+variable "dynamodb_table_name" {
+  description = "Name of the DynamoDB table for state tracking"
+  type        = string
+  default     = "image-translation-state"
 }
 
 variable "frontend_path" {
   description = "Local path to frontend files"
   type        = string
-  default     = "./frontend"
+  default     = "../frontend"
 }
 
-variable "skip_frontend" {
-  description = "Whether to skip the frontend deployment"
-  type        = bool
-  default     = false
-}
-
-variable "additional_origins" {
-  description = "Additional origins to add to CORS (e.g., CloudFront URL)"
+variable "allowed_origins" {
+  description = "List of allowed origins for CORS"
   type        = list(string)
-  default     = []
+  default     = ["http://localhost:8080", "http://127.0.0.1:8080"]
 }

@@ -2,18 +2,16 @@
 # Copy this to terraform.tfvars and update with your actual values
 
 # AWS Configuration
-aws_region = "us-east-1"
-
-# DynamoDB Configuration
-dynamodb_table_name = "reddit-ingest-state"
-
-# S3 Configuration - MUST be globally unique
-# Replace 'your-unique-identifier' with something unique to you
-s3_bucket_name = "aws-image-translate-your-unique-identifier"
+region = "us-east-1"
 
 # Project Configuration
 project_name = "aws-image-translate"
-environment  = "dev"  # Options: dev, staging, prod
+environment  = "dev"
 
-# Note: Reddit API credentials are now managed separately in .env.local
-# This keeps infrastructure configuration separate from application secrets
+# S3 Configuration - MUST be globally unique
+s3_bucket_name       = "your-unique-image-storage-bucket-name"
+frontend_bucket_name = "your-unique-frontend-hosting-bucket-name"
+
+# Frontend Configuration
+frontend_path = "../frontend"
+allowed_origins = ["http://localhost:8080", "http://127.0.0.1:8080"]

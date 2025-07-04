@@ -5,23 +5,22 @@
 
 This directory contains the Terraform configuration for deploying the AWS infrastructure for the image translation pipeline.
 
-## 🏗️ Architecture Overview (Feature-Driven)
+## 🏗️ Architecture Overview
 
-The infrastructure is organized into feature-specific modules, encapsulating all resources related to a particular application domain.
+The infrastructure is defined in a flat structure within this directory, with resources grouped into logical files:
 
 ```text
 terraform/
-├─ modules/
-│   ├─ api/                 # API Gateway resources for the application API
-│   ├─ frontend_hosting/    # S3 bucket and CloudFront for static frontend hosting
-│   ├─ image_translation/   # Lambda, S3 (image storage), DynamoDB (state tracking) for image processing
-│   └─ user_management/     # Cognito User Pool, Identity Pool, and related Lambda triggers
-└─ envs/
-    └─ dev/                 # Development environment configuration (main entry point)
-        ├─ main.tf          # Wires together feature modules for the dev environment
-        ├─ variables.tf
-        ├─ outputs.tf
-        └─ terraform.tfvars
+├─ main.tf              # Main entry point, provider configuration
+├─ api.tf               # API Gateway resources
+├─ cognito.tf           # Cognito User Pool and Identity Pool
+├─ dynamodb.tf          # DynamoDB table for state tracking
+├─ frontend.tf          # S3 bucket and CloudFront for frontend hosting
+├─ lambda.tf            # Lambda functions for image processing and Cognito triggers
+├─ s3.tf                # S3 bucket for image storage
+├─ variables.tf         # All input variables
+├─ outputs.tf           # All output values
+└─ terraform.tfvars.example # Example variables file
 ```
 
 ## 📋 Prerequisites
@@ -30,45 +29,31 @@ terraform/
 2. **Terraform installed** (>= 1.0) - Available at [terraform.io](https://terraform.io).
 3. **Python 3.8+** for Lambda function packaging.
 
-## 🚀 Quick Start (Development Environment)
+## 🚀 Quick Start
 
-All Terraform commands should be executed from the `terraform/envs/dev` directory.
+All Terraform commands should be executed from this `terraform/` directory.
 
-1. **Navigate to the development environment directory:**
+1. **Edit the variables file:**
+    Create `terraform.tfvars` in this directory (you can copy `terraform.tfvars.example`), and update the following variables to be globally unique:
+    - `s3_bucket_name`
+    - `frontend_bucket_name`
 
-    ```bash
-    cd terraform/envs/dev
-    ```
-
-2. **Edit the variables file:**
-    Create `terraform.tfvars` in `terraform/envs/dev` if it doesn't exist, and update `project_name` and `s3_bucket_name` to be globally unique.
-
-    ```hcl
-    # terraform/envs/dev/terraform.tfvars
-    project_name = "your-unique-project-name-dev"
-    s3_bucket_name = "your-globally-unique-image-bucket"
-    frontend_path = "../../frontend" # Path to your frontend build directory
-    ```
-
-3. **Initialize Terraform:**
-
+2. **Initialize Terraform:**
     ```bash
     terraform init
     ```
 
-4. **Plan the deployment:**
-
+3. **Plan the deployment:**
     ```bash
     terraform plan
     ```
 
-5. **Apply the infrastructure:**
-
+4. **Apply the infrastructure:**
     ```bash
     terraform apply
     ```
 
-## 🛠️ Useful Commands (run from `terraform/envs/dev`)
+## 🛠️ Useful Commands
 
 ```bash
 # Check what will be created/changed
@@ -82,25 +67,15 @@ terraform output
 
 # Validate configuration
 terraform validate
-
-# Check current workspace and state
-terraform workspace show
-terraform state list
 ```
 
 ## ⚙️ Configuration
 
-The primary configuration for the development environment is in `terraform/envs/dev/variables.tf` and `terraform/envs/dev/terraform.tfvars`.
+All configuration is managed in `variables.tf` and `terraform.tfvars`.
 
-## Security Features
+## 🗑️ Cleanup
 
-Security features like S3 public access blocks, server-side encryption, versioning, lifecycle rules, DynamoDB encryption, and IAM least privilege access are configured within their respective feature modules (`image_translation`, `user_management`, `frontend_hosting`).
-
-## Cleanup
-
-To destroy all resources for the development environment and avoid ongoing costs:
-
+To destroy all resources and avoid ongoing costs:
 ```bash
-cd terraform/envs/dev
 terraform destroy
 ```
