@@ -17,7 +17,7 @@ resource "local_file" "config" {
 # Create updated config.js with CloudFront URL after CloudFront is created
 resource "local_file" "config_updated" {
   depends_on = [aws_cloudfront_distribution.website]
-  
+
   content = templatefile("${path.module}/config.js.tpl", {
     aws_region           = var.region,
     user_pool_id         = aws_cognito_user_pool.pool.id,

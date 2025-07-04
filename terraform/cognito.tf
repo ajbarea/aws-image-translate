@@ -43,14 +43,14 @@ resource "aws_iam_role" "authenticated" {
   name = "${var.project_name}-cognito-authenticated"
 
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
-        Effect    = "Allow"
+        Effect = "Allow"
         Principal = {
           Federated = "cognito-identity.amazonaws.com"
         }
-        Action    = "sts:AssumeRoleWithWebIdentity"
+        Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
             "cognito-identity.amazonaws.com:aud" = aws_cognito_identity_pool.main.id
@@ -69,7 +69,7 @@ resource "aws_iam_role_policy" "authenticated_policy" {
   role = aws_iam_role.authenticated.id
 
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Effect   = "Allow"

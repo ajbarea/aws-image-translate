@@ -32,11 +32,11 @@ resource "aws_iam_role" "image_processor_role" {
   name = "${var.project_name}-image-processor-role"
 
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
-        Action    = "sts:AssumeRole"
-        Effect    = "Allow"
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
         Principal = {
           Service = "lambda.amazonaws.com"
         }
@@ -50,7 +50,7 @@ resource "aws_iam_policy" "image_processor_policy" {
   description = "Policy for the image processor Lambda function"
 
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Effect   = "Allow"
@@ -107,11 +107,11 @@ resource "aws_iam_role" "cognito_triggers_role" {
   name = "${var.project_name}-cognito-triggers-role"
 
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
-        Action    = "sts:AssumeRole"
-        Effect    = "Allow"
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
         Principal = {
           Service = "lambda.amazonaws.com"
         }
@@ -125,7 +125,7 @@ resource "aws_iam_role_policy" "cognito_triggers_policy" {
   role = aws_iam_role.cognito_triggers_role.id
 
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Effect   = "Allow"
