@@ -45,3 +45,15 @@ variable "allowed_origins" {
   type        = list(string)
   default     = ["http://localhost:8080", "http://127.0.0.1:8080"]
 }
+
+variable "additional_origins" {
+  description = "Additional allowed origins for CORS configuration, typically for dynamic environments."
+  type        = list(string)
+  default     = []
+}
+
+variable "skip_frontend" {
+  description = "Whether to skip the frontend deployment"
+  type        = bool
+  default     = false
+}

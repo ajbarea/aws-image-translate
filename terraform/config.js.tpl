@@ -9,6 +9,7 @@ const AWS_CONFIG = {
   bucketName: "${bucket_name}",
   apiGatewayUrl: "${api_gateway_url}",
   lambdaFunctionName: "${lambda_function_name}",
+  cloudfrontUrl: "${cloudfront_url}",
 };
 console.log("📋 Config: AWS_CONFIG loaded:", AWS_CONFIG);
 

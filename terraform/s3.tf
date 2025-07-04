@@ -99,7 +99,7 @@ resource "aws_s3_bucket_cors_configuration" "image_storage" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
-    allowed_origins = var.allowed_origins
+    allowed_origins = concat(var.allowed_origins, var.additional_origins, ["https://${aws_cloudfront_distribution.website.domain_name}"])
     expose_headers  = ["ETag", "x-amz-server-side-encryption", "x-amz-request-id", "x-amz-id-2"]
     max_age_seconds = 3000
   }

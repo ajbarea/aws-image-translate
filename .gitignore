@@ -241,3 +241,6 @@ CLAUDE.md
 GEMINI.md
 config.js
 uncovered
+terraform/cognito_triggers.zip
+terraform/image_processor.zip
+task.md

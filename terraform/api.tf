@@ -6,7 +6,7 @@ resource "aws_apigatewayv2_api" "image_api" {
   description   = "API for image processing"
 
   cors_configuration {
-    allow_origins = var.allowed_origins
+    allow_origins = concat(var.allowed_origins, var.additional_origins, ["*"])
     allow_methods = ["POST", "OPTIONS"]
     allow_headers = ["Content-Type", "Authorization", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token"]
   }
@@ -19,9 +19,9 @@ resource "aws_apigatewayv2_stage" "api_stage" {
 }
 
 resource "aws_apigatewayv2_integration" "lambda_integration" {
-  api_id           = aws_apigatewayv2_api.image_api.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.image_processor.invoke_arn
+  api_id                 = aws_apigatewayv2_api.image_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.image_processor.invoke_arn
   payload_format_version = "2.0"
 }
 
