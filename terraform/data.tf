@@ -1,5 +1,4 @@
-# Data sources for the AWS Image Translation infrastructure
-
+# terraform/data.tf
 # Get current AWS account ID
 data "aws_caller_identity" "current" {}
 

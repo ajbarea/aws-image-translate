@@ -59,3 +59,9 @@ variable "skip_frontend" {
   type        = bool
   default     = false
 }
+
+variable "trigger_run" {
+  description = "Variable to trigger Terraform Cloud runs without infrastructure changes"
+  type        = string
+  default     = "2025-07-04"
+}
