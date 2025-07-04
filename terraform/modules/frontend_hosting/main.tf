@@ -1,5 +1,19 @@
 # Frontend module for S3 website hosting and CloudFront distribution
 
+# Generate config.js from template
+resource "local_file" "config" {
+  content = templatefile("${path.module}/../../../terraform/config.js.tpl", {
+    aws_region           = var.aws_region,
+    user_pool_id         = var.user_pool_id,
+    user_pool_web_client = var.user_pool_web_client,
+    identity_pool_id     = var.identity_pool_id,
+    bucket_name          = var.bucket_name,
+    api_gateway_url      = var.api_gateway_url,
+    lambda_function_name = var.lambda_function_name
+  })
+  filename = "${var.frontend_path}/js/config.js"
+}
+
 # S3 bucket for website hosting
 resource "aws_s3_bucket" "website" {
   bucket        = var.bucket_name
@@ -37,7 +51,7 @@ resource "aws_s3_bucket_public_access_block" "website" {
 
 # Bucket policy for public read access
 resource "aws_s3_bucket_policy" "website" {
-  bucket = aws_s3_bucket.website.id
+  bucket     = aws_s3_bucket.website.id
   depends_on = [aws_s3_bucket_public_access_block.website]
 
   policy = jsonencode({
@@ -54,14 +68,10 @@ resource "aws_s3_bucket_policy" "website" {
   })
 }
 
-# Upload frontend files to S3
-resource "aws_s3_object" "frontend_files" {
-  for_each = fileset(var.frontend_path, "**/*")
-
-  bucket       = aws_s3_bucket.website.id
-  key          = each.value
-  source       = "${var.frontend_path}/${each.value}"
-  content_type = lookup({
+# Get all frontend files
+locals {
+  frontend_files = fileset(var.frontend_path, "**/*")
+  mime_types = {
     "html" = "text/html",
     "css"  = "text/css",
     "js"   = "application/javascript",
@@ -70,18 +80,26 @@ resource "aws_s3_object" "frontend_files" {
     "jpeg" = "image/jpeg",
     "gif"  = "image/gif",
     "ico"  = "image/x-icon",
-  }, length(regexall(".*\\.([^.]+)$", each.value)) > 0 ? regex(".*\\.([^.]+)$", each.value)[0] : "", "binary/octet-stream")
-  etag = filemd5("${var.frontend_path}/${each.value}")
+  }
+}
 
-  depends_on = [
-    var.config_file_ready
-  ]
+# Upload frontend files to S3
+resource "aws_s3_object" "frontend_files" {
+  for_each = local.frontend_files
+
+  bucket       = aws_s3_bucket.website.id
+  key          = each.value
+  source       = "${var.frontend_path}/${each.value}"
+  content_type = lookup(local.mime_types, regex("\\.([^.]+)$", each.value), "binary/octet-stream")
+  etag         = filemd5("${var.frontend_path}/${each.value}")
+
+  depends_on = [local_file.config]
 }
 
 # CloudFront distribution
 resource "aws_cloudfront_distribution" "website" {
   enabled             = true
-  is_ipv6_enabled    = true
+  is_ipv6_enabled     = true
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
 
@@ -100,7 +118,7 @@ resource "aws_cloudfront_distribution" "website" {
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
-    target_origin_id      = "S3-${var.bucket_name}"
+    target_origin_id       = "S3-${var.bucket_name}"
     viewer_protocol_policy = "redirect-to-https"
 
     forwarded_values {
@@ -124,4 +142,6 @@ resource "aws_cloudfront_distribution" "website" {
   viewer_certificate {
     cloudfront_default_certificate = true
   }
+
+  depends_on = [aws_s3_object.frontend_files]
 }

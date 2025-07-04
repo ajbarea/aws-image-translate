@@ -18,3 +18,33 @@ variable "config_file_ready" {
   type        = string
   default     = ""
 }
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "user_pool_id" {
+  description = "Cognito User Pool ID"
+  type        = string
+}
+
+variable "user_pool_web_client" {
+  description = "Cognito User Pool Web Client ID"
+  type        = string
+}
+
+variable "identity_pool_id" {
+  description = "Cognito Identity Pool ID"
+  type        = string
+}
+
+variable "api_gateway_url" {
+  description = "API Gateway URL"
+  type        = string
+}
+
+variable "lambda_function_name" {
+  description = "Lambda Function Name"
+  type        = string
+}

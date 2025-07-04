@@ -42,8 +42,13 @@ module "api" {
 module "frontend_hosting" {
   source = "../../modules/frontend_hosting"
 
-  bucket_name       = "${var.project_name}-frontend-hosting"
-  environment       = "dev"
-  frontend_path     = var.frontend_path
-  config_file_ready = true # Assuming config.js is generated before apply
+  bucket_name          = "${var.project_name}-frontend-hosting"
+  environment          = "dev"
+  frontend_path        = var.frontend_path
+  aws_region           = var.region
+  user_pool_id         = module.user_management.user_pool_id
+  user_pool_web_client = module.user_management.user_pool_client_id
+  identity_pool_id     = module.user_management.identity_pool_id
+  api_gateway_url      = module.api.api_invoke_url
+  lambda_function_name = module.image_translation.image_processor_lambda_function_name
 }
