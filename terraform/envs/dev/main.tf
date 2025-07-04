@@ -24,7 +24,7 @@ module "image_translation" {
   table_name         = "${var.project_name}-reddit-state"
   billing_mode       = "PAY_PER_REQUEST"
   allowed_origins    = var.allowed_origins
-  additional_origins = var.additional_origins
+  additional_origins = [module.frontend_hosting.cloudfront_url]
 }
 
 # API Module
@@ -33,7 +33,7 @@ module "api" {
 
   project_name                         = var.project_name
   allowed_origins                      = var.allowed_origins
-  additional_origins                   = var.additional_origins
+  additional_origins                   = [module.frontend_hosting.cloudfront_url]
   image_processor_lambda_invoke_arn    = module.image_translation.image_processor_lambda_invoke_arn
   image_processor_lambda_function_name = module.image_translation.image_processor_lambda_function_name
 }
