@@ -23,18 +23,19 @@ variable "additional_origins" {
 }
 
 variable "frontend_path" {
-  description = "The path to the frontend build directory."
+  description = "The relative path to the frontend build directory."
   type        = string
+  default     = "../../../frontend"
 }
 
 variable "lambda_dir_path" {
-  description = "The absolute path to the lambda code directory."
+  description = "The relative path to the lambda code directory."
   type        = string
-  default     = "C:/ajsoftworks/aws-image-translate/lambda"
+  default     = "../../../lambda"
 }
 
 variable "cognito_triggers_file_path" {
-  description = "The absolute path to the cognito triggers lambda file."
+  description = "The relative path to the cognito triggers lambda file."
   type        = string
-  default     = "C:/ajsoftworks/aws-image-translate/lambda/cognito_triggers.py"
+  default     = "../../../lambda/cognito_triggers.py"
 }
