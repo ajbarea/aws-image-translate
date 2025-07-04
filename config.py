@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env.local if it exists
 env_path = Path(__file__).parent / ".env.local"
-if env_path.exists():
+if env_path.exists():  # pragma: no cover
     load_dotenv(dotenv_path=env_path)
 
 # AWS Configuration

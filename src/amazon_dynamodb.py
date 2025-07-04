@@ -194,7 +194,7 @@ def print_table_items(table_name: str) -> None:
         print(f"Error scanning table {table_name}: {e}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     TEST_TABLE_NAME = "reddit_ingest_state_test"
     TEST_SUBREDDIT_KEY = "r/testsubreddit"
 
