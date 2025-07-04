@@ -53,7 +53,7 @@ variable "billing_mode" {
 variable "allowed_origins" {
   description = "List of allowed origins for CORS"
   type        = list(string)
-  default     = [
+  default = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://localhost:5500",

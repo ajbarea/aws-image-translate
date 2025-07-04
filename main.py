@@ -2,6 +2,7 @@ import argparse
 from typing import List, Optional
 
 import boto3
+from botocore.exceptions import ClientError
 
 from config import S3_IMAGE_BUCKET, SOURCE_LANGUAGE_CODE, TARGET_LANGUAGE_CODE
 from src.amazon_rekognition import detect_text_from_s3
@@ -76,10 +77,13 @@ def main(
         "C:/ajsoftworks/aws-image-translate/tests/resources/spanish_images/es1.png"
     )
 
-    print(f"Uploading from {local_image_path} to s3://{bucket}/{image_name}...")
-    if not upload_file_to_s3(local_image_path, bucket, image_name):
-        print("✗ Failed to upload image. Skipping image processing.")
-        return
+    if s3_object_exists(bucket, image_name):
+        print(f"Image {image_name} already exists in s3://{bucket}. Skipping upload.")
+    else:
+        print(f"Uploading from {local_image_path} to s3://{bucket}/{image_name}...")
+        if not upload_file_to_s3(local_image_path, bucket, image_name):
+            print("✗ Failed to upload image. Skipping image processing.")
+            return
 
     process_image(image_name, bucket, source_lang, target_lang)
 
@@ -105,6 +109,28 @@ def cli() -> None:
     )
     args = parser.parse_args()
     main(args.bucket, args.source_lang, args.target_lang)
+
+
+def s3_object_exists(bucket_name: str, object_key: str) -> bool:
+    """Check if an object exists in an S3 bucket.
+
+    Args:
+        bucket_name (str): The name of the S3 bucket.
+        object_key (str): The key of the object to check.
+
+    Returns:
+        bool: True if the object exists, False otherwise.
+    """
+    s3_client = boto3.client("s3")
+    try:
+        s3_client.head_object(Bucket=bucket_name, Key=object_key)
+        return True
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code == "404":
+            return False
+        else:
+            raise
 
 
 if __name__ == "__main__":  # pragma: no cover
