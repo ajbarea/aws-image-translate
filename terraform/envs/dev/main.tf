@@ -1,5 +1,6 @@
-# Test comment for Terraform Cloud integration - July 4, 2025
-# Working directory fix test - auto-apply enabled
+provider "aws" {
+  region = var.region
+}
 
 # Test S3 bucket to verify Terraform Cloud is working
 resource "aws_s3_bucket" "test_bucket" {
@@ -16,10 +17,6 @@ resource "random_string" "bucket_suffix" {
   length  = 8
   special = false
   upper   = false
-}
-
-provider "aws" {
-  region = var.region
 }
 
 # User Management Module
