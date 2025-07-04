@@ -20,6 +20,8 @@ resource "aws_cognito_user_pool" "pool" {
   lambda_config {
     custom_message = aws_lambda_function.cognito_triggers.arn
   }
+
+  depends_on = [aws_lambda_function.cognito_triggers]
 }
 
 resource "aws_cognito_user_pool_client" "client" {

@@ -60,8 +60,19 @@ variable "skip_frontend" {
   default     = false
 }
 
-variable "trigger_run" {
-  description = "Variable to trigger Terraform Cloud runs without infrastructure changes"
-  type        = string
-  default     = "2025-07-04"
+# variable "trigger_run" {
+#   description = "Variable to trigger Terraform Cloud runs without infrastructure changes"
+#   type        = string
+#   default     = "2025-07-04"
+# }
+
+# Add common tags for all resources
+variable "common_tags" {
+  description = "Common tags to apply to all resources"
+  type        = map(string)
+  default = {
+    Project     = "aws-image-translate"
+    Environment = "dev"
+    ManagedBy   = "terraform"
+  }
 }

@@ -1,36 +1,5 @@
 # terraform/frontend.tf
 
-resource "local_file" "config" {
-  content = templatefile("${path.module}/config.js.tpl", {
-    aws_region           = var.region,
-    user_pool_id         = aws_cognito_user_pool.pool.id,
-    user_pool_web_client = aws_cognito_user_pool_client.client.id,
-    identity_pool_id     = aws_cognito_identity_pool.main.id,
-    bucket_name          = aws_s3_bucket.image_storage.bucket,
-    api_gateway_url      = aws_apigatewayv2_api.image_api.api_endpoint,
-    lambda_function_name = aws_lambda_function.image_processor.function_name,
-    cloudfront_url       = "TBD_AFTER_CLOUDFRONT_CREATION"
-  })
-  filename = "${var.frontend_path}/js/config.js"
-}
-
-# Create updated config.js with CloudFront URL after CloudFront is created
-resource "local_file" "config_updated" {
-  depends_on = [aws_cloudfront_distribution.website]
-
-  content = templatefile("${path.module}/config.js.tpl", {
-    aws_region           = var.region,
-    user_pool_id         = aws_cognito_user_pool.pool.id,
-    user_pool_web_client = aws_cognito_user_pool_client.client.id,
-    identity_pool_id     = aws_cognito_identity_pool.main.id,
-    bucket_name          = aws_s3_bucket.image_storage.bucket,
-    api_gateway_url      = aws_apigatewayv2_api.image_api.api_endpoint,
-    lambda_function_name = aws_lambda_function.image_processor.function_name,
-    cloudfront_url       = "https://${aws_cloudfront_distribution.website.domain_name}"
-  })
-  filename = "${var.frontend_path}/js/config.js"
-}
-
 resource "aws_s3_bucket" "frontend_hosting" {
   bucket        = var.frontend_bucket_name
   force_destroy = true
@@ -94,6 +63,31 @@ locals {
   }
 }
 
+# Create config.js with all necessary values
+resource "local_file" "config" {
+  content = templatefile("${path.module}/config.js.tpl", {
+    aws_region           = var.region,
+    user_pool_id         = aws_cognito_user_pool.pool.id,
+    user_pool_web_client = aws_cognito_user_pool_client.client.id,
+    identity_pool_id     = aws_cognito_identity_pool.main.id,
+    bucket_name          = aws_s3_bucket.image_storage.bucket,
+    api_gateway_url      = aws_apigatewayv2_api.image_api.api_endpoint,
+    lambda_function_name = aws_lambda_function.image_processor.function_name,
+    cloudfront_url       = "https://${aws_cloudfront_distribution.website.domain_name}"
+  })
+  filename = "${var.frontend_path}/js/config.js"
+
+  depends_on = [
+    aws_cognito_user_pool.pool,
+    aws_cognito_user_pool_client.client,
+    aws_cognito_identity_pool.main,
+    aws_s3_bucket.image_storage,
+    aws_apigatewayv2_api.image_api,
+    aws_lambda_function.image_processor,
+    aws_cloudfront_distribution.website
+  ]
+}
+
 resource "aws_s3_object" "frontend_files" {
   for_each = local.frontend_files
 
@@ -101,9 +95,12 @@ resource "aws_s3_object" "frontend_files" {
   key          = each.value
   source       = "${var.frontend_path}/${each.value}"
   content_type = lookup(local.mime_types, element(split(".", each.value), -1), "binary/octet-stream")
-  etag         = each.value == "js/config.js" ? null : filemd5("${var.frontend_path}/${each.value}")
+  etag         = each.value == "js/config.js" ? local_file.config.content_md5 : filemd5("${var.frontend_path}/${each.value}")
 
-  depends_on = [local_file.config]
+  depends_on = [
+    aws_s3_bucket_policy.frontend_hosting,
+    local_file.config
+  ]
 }
 
 resource "aws_cloudfront_distribution" "website" {
@@ -152,8 +149,8 @@ resource "aws_cloudfront_distribution" "website" {
     cloudfront_default_certificate = true
   }
 
-  depends_on = [aws_s3_object.frontend_files]
+  depends_on = [
+    aws_s3_bucket_website_configuration.frontend_hosting,
+    aws_s3_bucket_policy.frontend_hosting
+  ]
 }
-
-# CloudFront URL is automatically added to S3 CORS configuration
-# No manual intervention required!

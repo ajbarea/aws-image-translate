@@ -46,6 +46,9 @@ resource "aws_s3_bucket_public_access_block" "image_storage" {
 resource "aws_s3_bucket_lifecycle_configuration" "image_storage" {
   bucket = aws_s3_bucket.image_storage.id
 
+  # Ensure proper dependency order
+  depends_on = [aws_s3_bucket_versioning.image_storage]
+
   rule {
     id     = "transition_and_expire"
     status = "Enabled"

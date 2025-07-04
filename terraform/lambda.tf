@@ -19,13 +19,21 @@ resource "aws_lambda_function" "image_processor" {
 
   environment {
     variables = {
-      S3_BUCKET = aws_s3_bucket.image_storage.bucket
+      S3_BUCKET        = aws_s3_bucket.image_storage.bucket
+      DYNAMODB_TABLE   = aws_dynamodb_table.state_table.name
+      REKOGNITION_ROLE = aws_iam_role.image_processor_role.arn
     }
   }
 
   tags = {
     Name = "${var.project_name}-image-processor"
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.image_processor_attachment,
+    aws_s3_bucket.image_storage,
+    aws_dynamodb_table.state_table
+  ]
 }
 
 resource "aws_iam_role" "image_processor_role" {
@@ -55,27 +63,42 @@ resource "aws_iam_policy" "image_processor_policy" {
       {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${aws_lambda_function.image_processor.function_name}:*"
+        Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/*"
+      },
+      {
+        Effect = "Allow"
+        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = [
+          aws_s3_bucket.image_storage.arn,
+          "${aws_s3_bucket.image_storage.arn}/*"
+        ]
       },
       {
         Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject"]
-        Resource = [aws_s3_bucket.image_storage.arn, "${aws_s3_bucket.image_storage.arn}/*"]
-      },
-      {
-        Effect   = "Allow"
-        Action   = "rekognition:DetectText"
+        Action   = ["rekognition:DetectText", "rekognition:DetectLabels"]
         Resource = "*"
       },
       {
         Effect   = "Allow"
-        Action   = "comprehend:DetectDominantLanguage"
+        Action   = ["comprehend:DetectDominantLanguage"]
         Resource = "*"
       },
       {
         Effect   = "Allow"
-        Action   = "translate:TranslateText"
+        Action   = ["translate:TranslateText"]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = aws_dynamodb_table.state_table.arn
       }
     ]
   })
@@ -101,6 +124,8 @@ resource "aws_lambda_function" "cognito_triggers" {
   runtime          = "python3.11"
   timeout          = 30
   source_code_hash = data.archive_file.cognito_triggers_zip.output_base64sha256
+
+  depends_on = [aws_iam_role_policy.cognito_triggers_policy]
 }
 
 resource "aws_iam_role" "cognito_triggers_role" {
