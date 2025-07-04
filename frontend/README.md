@@ -92,7 +92,6 @@ npx http-server -p 8000
 
 - **Netlify**: Drag and drop the frontend folder
 - **Vercel**: Connect your GitHub repository
-- **AWS Amplify**: Connect to your repository for CI/CD
 
 ## Security and Best Practices
 

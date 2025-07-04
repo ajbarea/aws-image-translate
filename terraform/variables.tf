@@ -49,3 +49,32 @@ variable "environment" {
     error_message = "Environment must be one of: dev, staging, prod."
   }
 }
+
+# Frontend Configuration
+variable "frontend_bucket_name" {
+  description = "Name of S3 bucket for website hosting"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9.-]+$", var.frontend_bucket_name)) && length(var.frontend_bucket_name) >= 3 && length(var.frontend_bucket_name) <= 63
+    error_message = "Frontend bucket name must be 3-63 characters, contain only lowercase letters, numbers, hyphens, and periods."
+  }
+}
+
+variable "frontend_path" {
+  description = "Local path to frontend files"
+  type        = string
+  default     = "./frontend"
+}
+
+variable "skip_frontend" {
+  description = "Whether to skip the frontend deployment"
+  type        = bool
+  default     = false
+}
+
+variable "additional_origins" {
+  description = "Additional origins to add to CORS (e.g., CloudFront URL)"
+  type        = list(string)
+  default     = []
+}

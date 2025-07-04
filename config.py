@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env.local if it exists
 env_path = Path(__file__).parent / ".env.local"
-if env_path.exists():
+if env_path.exists():  # pragma: no cover
     load_dotenv(dotenv_path=env_path)
 
 # AWS Configuration
@@ -53,7 +53,6 @@ MEDIA_PROCESSING_CONFIG = {
         "image/gif": ".gif",
         "image/webp": ".webp",
     },
-    "DOWNLOAD_FOLDER": "data/downloads",  # Local storage for downloaded images
     "USER_AGENT_FALLBACK": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "DOWNLOAD_TIMEOUT": 10,  # Seconds
     "MAX_RETRIES": 3,  # Number of download retries

@@ -37,9 +37,30 @@ output "environment" {
   value       = var.environment
 }
 
+# Lambda outputs
+output "lambda_function_arn" {
+  description = "ARN of the Lambda function for image processing"
+  value       = module.lambda.lambda_function_arn
+}
+
+output "lambda_function_name" {
+  description = "Name of the Lambda function"
+  value       = module.lambda.lambda_function_name
+}
+
+output "api_gateway_url" {
+  description = "API Gateway URL for image processing"
+  value       = module.lambda.api_gateway_invoke_url
+}
+
+output "api_gateway_invoke_url" {
+  description = "API Gateway invoke URL for image processing"
+  value       = module.lambda.api_gateway_invoke_url
+}
+
 # Integration Information
 output "integration_config" {
-  description = "Configuration values for Python application integration"
+  description = "Configuration values for Python application and frontend integration"
   value = {
     DYNAMODB_TABLE_NAME = module.dynamodb.table_name
     S3_IMAGE_BUCKET     = module.s3.bucket_name
@@ -50,4 +71,15 @@ output "integration_config" {
     LAMBDA_FUNCTION_ARN = module.lambda.lambda_function_arn
     API_GATEWAY_URL     = module.lambda.api_gateway_invoke_url
   }
+}
+
+# Frontend URLs
+output "frontend_website_url" {
+  description = "S3 website URL for the frontend"
+  value       = var.skip_frontend ? null : module.frontend[0].website_url
+}
+
+output "frontend_cloudfront_url" {
+  description = "CloudFront distribution URL for the frontend"
+  value       = var.skip_frontend ? null : module.frontend[0].cloudfront_url
 }

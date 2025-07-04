@@ -534,7 +534,6 @@ This project is pre-configured with the following default settings (from `config
 
 - **Download Timeout**: 10 seconds
 - **Max Retries**: 3 attempts
-- **Local Download Folder**: `data/downloads`
 
 **To customize these settings:**
 

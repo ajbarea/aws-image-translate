@@ -199,3 +199,92 @@ def test_get_image_urls_from_subreddits_success():
         mock_reddit, subreddits=["nonexistent"]
     )
     assert urls["nonexistent"] == []
+
+
+def test_create_reddit_credentials_with_real_values():
+    """Test create_reddit_credentials when credentials are actually found (line 86)."""
+    with patch.dict(os.environ, {}, clear=True):
+        with patch("src.reddit_scraper.REDDIT_CLIENT_ID", "real_id"):
+            with patch("src.reddit_scraper.REDDIT_CLIENT_SECRET", "real_secret"):
+                with patch("src.reddit_scraper.REDDIT_USER_AGENT", "real_agent"):
+                    creds = reddit_scraper.create_reddit_credentials()
+                    assert creds["client_id"] == "real_id"
+                    assert creds["client_secret"] == "real_secret"
+                    assert creds["user_agent"] == "real_agent"
+
+
+def test_init_reddit_client_credential_error():
+    """Test init_reddit_client when create_reddit_credentials raises ValueError (lines 115-116)."""
+    with patch("src.reddit_scraper.create_reddit_credentials") as mock_create_creds:
+        mock_create_creds.side_effect = ValueError("Missing credentials")
+        client = reddit_scraper.init_reddit_client()
+        assert client is None
+
+
+def test_get_image_urls_from_subreddits_uses_config_subreddits():
+    """Test get_image_urls_from_subreddits when subreddits is None and config has SUBREDDITS (lines 235-237)."""
+    mock_reddit = MagicMock()
+    mock_subreddit = MagicMock()
+    mock_reddit.subreddit.return_value = mock_subreddit
+
+    submissions = [DummySubmission(url="https://i.redd.it/test.jpg")]
+    mock_subreddit.new.return_value = submissions
+
+    # Mock config to have SUBREDDITS set
+    with patch.dict(
+        reddit_scraper.REDDIT_SCRAPING_CONFIG, {"SUBREDDITS": ["test1", "test2"]}
+    ):
+        urls = reddit_scraper.get_image_urls_from_subreddits(
+            mock_reddit, subreddits=None
+        )
+        assert "test1" in urls
+        assert "test2" in urls
+
+
+def test_get_image_urls_from_subreddits_uses_default_subreddit():
+    """Test get_image_urls_from_subreddits when subreddits is None and config has no SUBREDDITS (lines 235-237)."""
+    mock_reddit = MagicMock()
+    mock_subreddit = MagicMock()
+    mock_reddit.subreddit.return_value = mock_subreddit
+
+    submissions = [DummySubmission(url="https://i.redd.it/test.jpg")]
+    mock_subreddit.new.return_value = submissions
+
+    # Mock config to have no SUBREDDITS (None)
+    with patch.dict(
+        reddit_scraper.REDDIT_SCRAPING_CONFIG,
+        {"SUBREDDITS": None, "DEFAULT_SUBREDDIT": "translator"},
+    ):
+        urls = reddit_scraper.get_image_urls_from_subreddits(
+            mock_reddit, subreddits=None
+        )
+        assert "translator" in urls
+
+
+def test_get_new_image_posts_since_with_after_fullname():
+    """Test get_new_image_posts_since when after_fullname is provided (line 307)."""
+    mock_reddit = MagicMock()
+    mock_subreddit = MagicMock()
+    mock_reddit.subreddit.return_value = mock_subreddit
+
+    submissions = [
+        DummySubmission(url="https://i.redd.it/test.jpg", fullname="t3_test")
+    ]
+    mock_subreddit.new.return_value = submissions
+
+    posts = reddit_scraper.get_new_image_posts_since(
+        mock_reddit, after_fullname="t3_previous"
+    )
+
+    # Verify that subreddit.new was called with the after parameter
+    mock_subreddit.new.assert_called_with(limit=25, params={"after": "t3_previous"})
+    assert len(posts) == 1
+
+
+def test_get_new_image_posts_since_exception_handling():
+    """Test get_new_image_posts_since when an exception occurs (lines 332-333)."""
+    mock_reddit = MagicMock()
+    mock_reddit.subreddit.side_effect = Exception("Reddit API error")
+
+    posts = reddit_scraper.get_new_image_posts_since(mock_reddit)
+    assert posts == []

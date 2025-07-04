@@ -68,7 +68,7 @@ region=us-east-1
 .\setup-env.ps1 -Prod     # Production dependencies only
 .\setup-env.ps1 -Clean    # Clean install
 
-# Linux/Mac/Windows (Bash)
+# Linux/Mac
 ./setup-env.sh            # Setup with dev dependencies
 ./setup-env.sh --prod     # Production dependencies only
 ./setup-env.sh --clean    # Clean install
@@ -79,7 +79,6 @@ region=us-east-1
 ```bash
 python -m venv .venv
 source .venv/Scripts/activate  # Windows
-source .venv/bin/activate     # Linux/Mac
 python -m pip install --upgrade pip
 pip install -r requirements-dev.txt
 ```
@@ -185,7 +184,7 @@ This project includes Terraform configuration for managing AWS infrastructure. S
 
    # Alternative: Use deployment scripts
    .\deploy.ps1 -Action destroy    # Windows PowerShell
-   ./deploy.sh destroy             # Linux/Mac/Windows Bash
+   ./deploy.sh destroy             # Linux/Mac
 
    # Alternative: Use cleanup script
    python cleanup.py --dry-run    # Preview what will be deleted
@@ -196,95 +195,35 @@ This project includes Terraform configuration for managing AWS infrastructure. S
 
 ### Running Tests
 
-```bash
-# Run all tests (64 comprehensive tests)
-pytest
+To run the full test suite, including coverage reporting, use the following command:
 
-# Run tests with coverage
+```bash
 pytest --cov=src
-
-# Run tests with verbose output
-pytest -v
-
-# Run specific test file
-pytest tests/test_main.py
-
-# Run tests with coverage report
-pytest --cov=src --cov-report=html
 ```
 
-### Development Tools
+### Development Tools and Code Quality
 
-The project includes comprehensive development tools configured in `requirements-dev.txt`:
+This project uses a suite of modern Python development tools to ensure high code quality and consistency. Code formatting, linting, and type-checking are automated using `pre-commit` hooks.
 
-- **pytest>=8.0.0**: Testing framework with 64 comprehensive tests
-- **pytest-cov>=4.0.0**: Coverage reporting for test metrics
-- **moto>=4.2.0**: AWS services mocking for testing
-- **black>=23.0.0**: Code formatting with modern Python support
-- **flake8>=6.0.0**: Code linting with customizable rules
-- **isort>=5.12.0**: Import sorting for clean code organization
-- **mypy>=1.0.0**: Type checking for better code quality
-- **pre-commit>=3.0.0**: Git hooks for automated code quality checks
+The primary tools include:
+
+- **`pytest`**: For running the comprehensive test suite.
+- **`black`**: For opinionated, consistent code formatting.
+- **`isort`**: For automatically sorting imports.
+- **`flake8`**: For enforcing style and complexity rules.
+- **`mypy`**: For static type checking.
+
+#### Running Quality Checks
+
+To run all code quality checks and formatters across the entire project, use the provided script:
 
 ```bash
-# Format code with modern Python support
-black .
-
-# Lint code with project-specific rules
-flake8 .
-
-# Sort imports for clean organization
-isort .
-
-# Type checking for better code quality
-mypy src/
-
-# Run all quality checks via pre-commit
-pre-commit run --all-files
-
-# Run tests with coverage reporting
-pytest --cov=src --cov-report=html
-
-# Run specific test modules
-pytest tests/test_main.py -v
+./lint.sh
 ```
 
-## 📊 Project Status
+This script executes all configured `pre-commit` hooks, which include `black`, `isort`, `flake8`, and `mypy`.
 
-**Current Version**: Development/Testing Phase
-**Python Version**: Actively tested with Python 3.13.2
-**Test Coverage**: 64 comprehensive unit tests covering all modules
-**AWS Services**: S3, DynamoDB, Rekognition, Translate, Comprehend, Lambda
-**Last Updated**: June 2025
-
-### Current Features
-
-✅ **Core Functionality**
-
-- Reddit API integration for automated image discovery
-- AWS Rekognition OCR for text extraction from images
-- AWS Translate for multi-language text translation (75+ languages)
-- DynamoDB state management for processing tracking
-- S3 secure image storage with encryption
-
-✅ **Development Tools**
-
-- Comprehensive test suite with AWS service mocking (64 tests)
-- Modern code quality tools (Black, Flake8, isort, mypy)
-- Virtual environment setup with dual requirements files
-- Terraform infrastructure automation with deployment scripts
-- Frontend web interface with Cognito authentication
-- GitHub Actions CI/CD pipeline with automated testing
-- SonarQube integration for code quality analysis
-
-🔧 **Development Areas**
-
-- Performance optimization for large image batches
-- Enhanced error handling and retry mechanisms for AWS API failures
-- Cost optimization features and usage monitoring
-- Additional language support and detection confidence tuning
-- Real-time processing capabilities with Lambda triggers
-- Enhanced web UI with advanced filtering and search capabilities
+For convenience, `pre-commit` is also configured to run on every `git commit`. To enable this feature, run `pre-commit install` once after setting up your environment.
 
 ## 🚧 Project Architecture Details
 
@@ -308,14 +247,6 @@ pytest tests/test_main.py -v
 - **Vanilla JavaScript**: Lightweight, fast, no frameworks required
 - **AWS SDK for JavaScript**: Direct AWS service integration
 - **AWS Cognito**: Secure user authentication and authorization
-
-**Development Tools:**
-
-- **pytest**: 64 comprehensive test cases with AWS mocking
-- **Black**: Opinionated code formatting for consistency
-- **Flake8**: Linting with customizable rules in setup.cfg
-- **mypy**: Static type checking for better code quality
-- **SonarQube**: Code quality analysis and security scanning
 
 ## 📚 Documentation and Resources
 

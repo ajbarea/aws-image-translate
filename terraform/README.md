@@ -3,174 +3,72 @@
 > **Infrastructure as Code for AWS AI/ML Translation Services**
 > Automated provisioning and management of AWS resources for image text extraction, language detection, and translation pipeline using Terraform.
 
-This directory contains simplified Terraform configuration for deploying AWS infrastructure for the image translation pipeline.
+This directory contains the Terraform configuration for deploying the AWS infrastructure for the image translation pipeline.
 
-## Troubleshooting
+## 🏗️ Architecture Overview (Feature-Driven)
 
-**Common Setup Issues:**
-
-1. **S3 bucket name conflicts**: Choose a globally unique bucket name in `terraform.tfvars`
-2. **AWS credentials**: Ensure `aws configure` has proper permissions for creating IAM roles, DynamoDB tables, and S3 buckets
-3. **Terraform not found**: Install Terraform from [terraform.io](https://terraform.io) and ensure it's in your PATH
-
-**Required AWS Permissions:**
-
-Your AWS credentials need the following permissions:
-
-- `s3:CreateBucket`, `s3:PutBucketPolicy`, `s3:PutBucketEncryption`
-- `dynamodb:CreateTable`, `dynamodb:DescribeTable`
-- `iam:CreateRole`, `iam:CreatePolicy`, `iam:AttachRolePolicy`
-- `lambda:CreateFunction` (if deploying Lambda functions) of AWS resources for image text extraction, language detection, and translation pipeline using Terraform.
-
-This directory contains simplified Terraform configuration for deploying AWS infrastructure for the image translation pipeline.
-
-## 🏗️ What This Creates
-
-- **DynamoDB Table**: `reddit_ingest_state` for tracking Reddit post processing state
-- **S3 Bucket**: Secure storage for images with encryption, versioning, and lifecycle rules
-- **IAM Role & Policy**: Application permissions for accessing DynamoDB, S3, Rekognition, and Translate services
-
-## 🔧 Architecture Overview
+The infrastructure is organized into feature-specific modules, encapsulating all resources related to a particular application domain.
 
 ```text
-┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
-│   Python App   │───▶│  S3 Bucket   │───▶│  AWS Services   │
-│                 │    │  (Images)    │    │ - Rekognition   │
-└─────────────────┘    └──────────────┘    │ - Translate     │
-         │                                  └─────────────────┘
-         ▼
-┌─────────────────┐
-│ DynamoDB Table  │
-│ (Reddit State)  │
-└─────────────────┘
+terraform/
+├─ modules/
+│   ├─ api/                 # API Gateway resources for the application API
+│   ├─ frontend_hosting/    # S3 bucket and CloudFront for static frontend hosting
+│   ├─ image_translation/   # Lambda, S3 (image storage), DynamoDB (state tracking) for image processing
+│   └─ user_management/     # Cognito User Pool, Identity Pool, and related Lambda triggers
+└─ envs/
+    └─ dev/                 # Development environment configuration (main entry point)
+        ├─ main.tf          # Wires together feature modules for the dev environment
+        ├─ variables.tf
+        ├─ outputs.tf
+        └─ terraform.tfvars
 ```
 
 ## 📋 Prerequisites
 
-1. **AWS CLI configured** with appropriate credentials (`aws configure`)
-2. **Terraform installed** (>= 1.0) - Available at [terraform.io](https://terraform.io)
-3. **Unique S3 bucket name** (S3 bucket names must be globally unique)
-4. **Python 3.8+** for running the cleanup script (actively tested with Python 3.13.2)
+1. **AWS CLI configured** with appropriate credentials (`aws configure`).
+2. **Terraform installed** (>= 1.0) - Available at [terraform.io](https://terraform.io).
+3. **Python 3.8+** for Lambda function packaging.
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Development Environment)
 
-1. **Edit the variables file:**
+All Terraform commands should be executed from the `terraform/envs/dev` directory.
 
-   ```bash
-   # Edit terraform/terraform.tfvars
-   # Update s3_bucket_name to something globally unique
-   # Your Reddit API credentials are already set up
-   ```
+1. **Navigate to the development environment directory:**
 
-2. **Initialize Terraform:**
+    ```bash
+    cd terraform/envs/dev
+    ```
 
-   ```bash
-   cd terraform
-   terraform init
-   ```
+2. **Edit the variables file:**
+    Create `terraform.tfvars` in `terraform/envs/dev` if it doesn't exist, and update `project_name` and `s3_bucket_name` to be globally unique.
 
-3. **Plan the deployment:**
+    ```hcl
+    # terraform/envs/dev/terraform.tfvars
+    project_name = "your-unique-project-name-dev"
+    s3_bucket_name = "your-globally-unique-image-bucket"
+    frontend_path = "../../frontend" # Path to your frontend build directory
+    ```
 
-   ```bash
-   terraform plan
-   ```
+3. **Initialize Terraform:**
 
-4. **Apply the infrastructure:**
+    ```bash
+    terraform init
+    ```
 
-   ```bash
-   terraform apply
-   ```
+4. **Plan the deployment:**
 
-## 🛠️ Using the Deploy Scripts (Recommended)
+    ```bash
+    terraform plan
+    ```
 
-Instead of running terraform commands directly, you can use the deployment scripts:
+5. **Apply the infrastructure:**
 
-**Windows (PowerShell):**
+    ```bash
+    terraform apply
+    ```
 
-```powershell
-.\deploy.ps1 -Action init
-.\deploy.ps1 -Action plan
-.\deploy.ps1 -Action apply
-```
-
-**Linux/Mac/Windows Bash:**
-
-```bash
-./deploy.sh init
-./deploy.sh plan
-./deploy.sh apply
-```
-
-## ⚙️ Configuration
-
-Your `terraform.tfvars` should be configured with:
-
-```hcl
-aws_region = "us-east-1"
-dynamodb_table_name = "reddit_ingest_state"
-s3_bucket_name = "your-globally-unique-bucket-name"  # MUST be globally unique!
-
-# Reddit API credentials (synchronized with .env.local)
-reddit_client_id     = "your_reddit_client_id"
-reddit_client_secret = "your_reddit_client_secret"
-reddit_user_agent    = "python:translate-images-bot:1.0 (by u/your_username)"
-```
-
-**Important:**
-
-- S3 bucket names must be globally unique across all AWS accounts
-- Reddit credentials should match those in your `.env.local` file
-- These values are synchronized with your Python `config.py` file
-
-## Security Features
-
-✅ **S3 Security:**
-
-- Public access blocked
-- Server-side encryption (AES256)
-- Versioning enabled
-- Lifecycle rules for cost optimization
-
-✅ **DynamoDB Security:**
-
-- Server-side encryption enabled
-- Point-in-time recovery enabled
-
-✅ **IAM Security:**
-
-- Least privilege access
-- Specific resource permissions only
-
-## Cleanup
-
-To destroy all resources and avoid ongoing costs:
-
-```bash
-terraform destroy
-# or
-./deploy.sh destroy
-```
-
-## File Structure
-
-```text
-terraform/
-├── main.tf                # Main infrastructure configuration
-├── variables.tf           # Input variables
-├── outputs.tf            # Output values
-├── data.tf               # Data sources
-├── terraform.tfvars      # Your actual values (configured)
-├── terraform.tfvars.example  # Template for new setups
-├── deploy.sh             # Bash deployment script
-├── deploy.ps1            # PowerShell deployment script
-└── modules/              # Reusable modules
-    ├── dynamodb/         # DynamoDB table module
-    └── s3/               # S3 bucket module
-```
-
-## Additional Resources
-
-### Useful Commands
+## 🛠️ Useful Commands (run from `terraform/envs/dev`)
 
 ```bash
 # Check what will be created/changed
@@ -190,20 +88,19 @@ terraform workspace show
 terraform state list
 ```
 
-## Integration with Python Application
+## ⚙️ Configuration
 
-After deploying, your resources will match your Python `config.py`:
+The primary configuration for the development environment is in `terraform/envs/dev/variables.tf` and `terraform/envs/dev/terraform.tfvars`.
 
-```python
-# These values should be synchronized between terraform.tfvars and config.py:
-S3_IMAGE_BUCKET = "your-globally-unique-bucket-name"  # From terraform.tfvars
-DYNAMODB_TABLE_NAME = "reddit_ingest_state"          # From terraform.tfvars
-AWS_REGION = "us-east-1"                             # From terraform.tfvars
+## Security Features
 
-# Reddit API credentials are managed via environment variables
-REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
-REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
-REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT")
+Security features like S3 public access blocks, server-side encryption, versioning, lifecycle rules, DynamoDB encryption, and IAM least privilege access are configured within their respective feature modules (`image_translation`, `user_management`, `frontend_hosting`).
+
+## Cleanup
+
+To destroy all resources for the development environment and avoid ongoing costs:
+
+```bash
+cd terraform/envs/dev
+terraform destroy
 ```
-
-The infrastructure is designed to work seamlessly with your existing Python application configuration, including enhanced media processing and subreddit scraping capabilities.

@@ -8,7 +8,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, cast
 from urllib.parse import urlparse
 
 import requests
@@ -305,8 +305,9 @@ def enhanced_download_media(
         if not validate_url(url):
             raise MediaError(f"Invalid URL: {url}", url)
 
-        headers = {
-            "User-Agent": user_agent or MEDIA_PROCESSING_CONFIG["USER_AGENT_FALLBACK"]
+        headers: Dict[str, str] = {
+            "User-Agent": user_agent
+            or cast(str, MEDIA_PROCESSING_CONFIG["USER_AGENT_FALLBACK"])
         }
 
         # Determine file extension and set appropriate Accept header
@@ -347,7 +348,7 @@ def enhanced_download_media(
         return None, None
 
 
-def get_supported_extensions() -> Dict[str, list]:
+def get_supported_extensions() -> Dict[str, List[str]]:
     """Get all supported file extensions organized by type.
 
     Returns:
@@ -372,19 +373,3 @@ def get_project_root_path() -> str:
         str: Absolute path to the project root directory
     """
     return str(Path(__file__).parent.parent.absolute())
-
-
-def create_folder(path: PathLike, exist_ok: bool = True) -> None:
-    """Create a folder and its parents if they don't exist.
-
-    Args:
-        path: Path to the folder to create
-        exist_ok: If True, don't raise an error if folder exists
-
-    Raises:
-        MediaError: If folder creation fails
-    """
-    try:
-        os.makedirs(path, exist_ok=exist_ok)
-    except OSError as e:
-        raise MediaError(f"Failed to create folder {path}: {e}")

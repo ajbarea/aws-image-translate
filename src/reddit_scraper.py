@@ -10,7 +10,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 import praw
 from dotenv import load_dotenv
@@ -122,18 +122,45 @@ def init_reddit_client() -> "praw.Reddit | None":
         return None
 
 
-def is_supported_media_url(url: str) -> bool:
-    """Check if URL points to supported media format.
+def is_gallery_url(url: str) -> bool:
+    """Check if URL is a gallery link (imgur, reddit gallery).
 
     Args:
         url: URL to check
 
     Returns:
-        True if URL is supported media format
+        True if URL is a gallery link
+    """
+    return (
+        "imgur.com/gallery/" in url
+        or "imgur.com/a/" in url
+        or "reddit.com/gallery/" in url
+    )
+
+
+def is_supported_media_url(url: str) -> bool:
+    """Check if URL points to supported media format or is a gallery.
+
+    Args:
+        url: URL to check
+
+    Returns:
+        True if URL is supported media format or gallery
     """
     url_lower = url.lower()
-    supported_formats = REDDIT_SCRAPING_CONFIG["SUPPORTED_MEDIA_FORMATS"]
-    return any(f".{fmt}" in url_lower for fmt in supported_formats)
+    supported_formats = cast(
+        List[str], REDDIT_SCRAPING_CONFIG["SUPPORTED_MEDIA_FORMATS"]
+    )
+
+    # Check for direct media files
+    has_media_extension = any(
+        url_lower.endswith(f".{fmt}") for fmt in supported_formats
+    )
+
+    # Check for gallery URLs (which don't have file extensions)
+    is_gallery = is_gallery_url(url)
+
+    return has_media_extension or is_gallery
 
 
 def is_direct_media_url(url: str) -> bool:
@@ -159,10 +186,14 @@ def _extract_urls_from_text(text: str) -> Set[str]:
     Returns:
         Set[str]: A set of matched image URLs.
     """
-    return {match.group(0) for match in IMAGE_URL_PATTERN.finditer(text)}
+    return {
+        match.group(0)
+        for match in IMAGE_URL_PATTERN.finditer(text)
+        if is_supported_media_url(match.group(0))
+    }
 
 
-def extract_image_urls_from_submission(submission) -> Set[str]:
+def extract_image_urls_from_submission(submission: Any) -> Set[str]:
     """Extract all image URLs from a Reddit submission's URL and selftext.
 
     Args:
@@ -184,7 +215,7 @@ def extract_image_urls_from_submission(submission) -> Set[str]:
 def get_image_urls_from_subreddits(
     reddit: Optional["praw.Reddit"],
     subreddits: Optional[List[str]] = None,
-    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
+    limit: int = cast(int, REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"]),
 ) -> Dict[str, List[str]]:
     """Fetch image URLs from multiple subreddits.
 
@@ -201,12 +232,13 @@ def get_image_urls_from_subreddits(
         return {}
 
     if subreddits is None:
-        subreddits = REDDIT_SCRAPING_CONFIG.get(
-            "SUBREDDITS", [REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"]]
+        config_subreddits = REDDIT_SCRAPING_CONFIG.get("SUBREDDITS")
+        default_subreddit = cast(str, REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"])
+        subreddits = (
+            cast(List[str], config_subreddits)
+            if config_subreddits
+            else [default_subreddit]
         )
-    assert (
-        subreddits is not None
-    )  # Help type checker understand subreddits cannot be None here
 
     results = {}
     for subreddit_name in subreddits:
@@ -226,7 +258,7 @@ def get_image_urls_from_subreddits(
 # Legacy wrapper for backward compatibility
 def get_image_urls_from_translator(
     reddit: Optional["praw.Reddit"],
-    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
+    limit: int = cast(int, REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"]),
 ) -> List[str]:
     """Legacy wrapper for backward compatibility. Use get_image_urls_from_subreddits instead.
 
@@ -237,18 +269,19 @@ def get_image_urls_from_translator(
     Returns:
         List[str]: A list of image URLs found in the latest posts from r/translator.
     """
+    default_subreddit = cast(str, REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"])
     results = get_image_urls_from_subreddits(
-        reddit, subreddits=[REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"]], limit=limit
+        reddit, subreddits=[default_subreddit], limit=limit
     )
-    return results.get(REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"], [])
+    return results.get(default_subreddit, [])
 
 
 def get_new_image_posts_since(
     reddit: Optional["praw.Reddit"],
-    subreddit_name: str = REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"],
-    limit: int = REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"],
+    subreddit_name: str = cast(str, REDDIT_SCRAPING_CONFIG["DEFAULT_SUBREDDIT"]),
+    limit: int = cast(int, REDDIT_SCRAPING_CONFIG["REDDIT_FETCH_LIMIT"]),
     after_fullname: Optional[str] = None,
-) -> List[tuple[str, str]]:
+) -> List[Tuple[str, str]]:
     """Fetch new image posts from a subreddit since a given post ID (fullname).
 
     Args:
@@ -258,7 +291,7 @@ def get_new_image_posts_since(
         after_fullname (Optional[str], optional): Only return posts after this fullname. Defaults to None.
 
     Returns:
-        List[tuple[str, str]]: A list of (post_id, image_url) tuples for new image posts.
+        List[Tuple[str, str]]: A list of (post_id, image_url) tuples for new image posts.
     """
     if not reddit:
         logging.warning("Reddit client not initialized.")
@@ -280,13 +313,14 @@ def get_new_image_posts_since(
         for submission in submissions_generator:
             post_fullname = submission.fullname
             for url in extract_image_urls_from_submission(submission):
-                temp_posts.append(
-                    {
-                        "id": post_fullname,
-                        "url": url,
-                        "created_utc": submission.created_utc,
-                    }
-                )
+                if is_supported_media_url(url):
+                    temp_posts.append(
+                        {
+                            "id": post_fullname,
+                            "url": url,
+                            "created_utc": submission.created_utc,
+                        }
+                    )
         # Sort posts by creation time (oldest to newest)
         if temp_posts:
             sorted_posts = sorted(temp_posts, key=lambda p: p["created_utc"])

@@ -16,6 +16,11 @@ resource "aws_cognito_user_pool" "pool" {
   verification_message_template {
     default_email_option = "CONFIRM_WITH_CODE"
   }
+
+  # Lambda triggers for debugging confirmation codes
+  lambda_config {
+    custom_message = aws_lambda_function.cognito_triggers.arn
+  }
 }
 
 resource "aws_cognito_user_pool_client" "client" {
@@ -90,4 +95,13 @@ resource "aws_iam_role_policy" "authenticated_policy" {
       }
     ]
   })
+}
+
+# Attach IAM roles to the Identity Pool
+resource "aws_cognito_identity_pool_roles_attachment" "main" {
+  identity_pool_id = aws_cognito_identity_pool.main.id
+
+  roles = {
+    "authenticated" = aws_iam_role.authenticated.arn
+  }
 }
