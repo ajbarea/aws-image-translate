@@ -1,4 +1,7 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+from botocore.exceptions import ClientError
 
 from main import process_all_images, process_image
 
@@ -89,6 +92,26 @@ def test_main_function_uploads_missing_image(monkeypatch):
     mock_process.assert_called_once_with("es1.png", "bucket", "es", "en")
 
 
+# Test main upload failure skips processing
+def test_main_upload_failure_skips_processing(monkeypatch):
+    mock_s3_exists = MagicMock(return_value=False)
+    mock_upload = MagicMock(return_value=False)
+    mock_process = MagicMock()
+    monkeypatch.setattr("main.s3_object_exists", mock_s3_exists)
+    monkeypatch.setattr("main.upload_file_to_s3", mock_upload)
+    monkeypatch.setattr("main.process_image", mock_process)
+    from main import main as main_func
+
+    main_func("bucket", "es", "en")
+
+    mock_upload.assert_called_once_with(
+        "C:/ajsoftworks/aws-image-translate/tests/resources/spanish_images/es1.png",
+        "bucket",
+        "es1.png",
+    )
+    mock_process.assert_not_called()
+
+
 def test_cli_invokes_main(monkeypatch, capsys):
     mock_main = MagicMock()
     monkeypatch.setattr("main.main", mock_main)
@@ -122,3 +145,68 @@ def test_cli_default_args(monkeypatch):
     mock_main.assert_called_once_with(
         S3_IMAGE_BUCKET, SOURCE_LANGUAGE_CODE, TARGET_LANGUAGE_CODE
     )
+
+
+# Tests for s3_object_exists
+@patch("main.boto3")
+def test_s3_object_exists_true(mock_boto3):
+    mock_s3_client = MagicMock()
+    mock_boto3.client.return_value = mock_s3_client
+    mock_s3_client.head_object.return_value = {}
+
+    from main import s3_object_exists
+
+    assert s3_object_exists("bucket", "key") is True
+    mock_boto3.client.assert_called_once_with("s3")
+    mock_s3_client.head_object.assert_called_once_with(Bucket="bucket", Key="key")
+
+
+@patch("main.boto3")
+def test_s3_object_exists_false_on_404(mock_boto3):
+    mock_s3_client = MagicMock()
+    mock_boto3.client.return_value = mock_s3_client
+    err = ClientError({"Error": {"Code": "404"}}, "HeadObject")
+    mock_s3_client.head_object.side_effect = err
+
+    from main import s3_object_exists
+
+    assert s3_object_exists("bucket", "key") is False
+
+
+@patch("main.boto3")
+def test_s3_object_exists_raises_on_other_error(mock_boto3):
+    mock_s3_client = MagicMock()
+    mock_boto3.client.return_value = mock_s3_client
+    err = ClientError({"Error": {"Code": "500"}}, "HeadObject")
+    mock_s3_client.head_object.side_effect = err
+
+    from main import s3_object_exists
+
+    with pytest.raises(ClientError):
+        s3_object_exists("bucket", "key")
+
+
+# Tests for upload_file_to_s3
+@patch("main.boto3")
+def test_upload_file_to_s3_success(mock_boto3):
+    mock_s3_client = MagicMock()
+    mock_boto3.client.return_value = mock_s3_client
+
+    from main import upload_file_to_s3
+
+    result = upload_file_to_s3("file.txt", "bucket", "key")
+    assert result is True
+    mock_boto3.client.assert_called_once_with("s3")
+    mock_s3_client.upload_file.assert_called_once_with("file.txt", "bucket", "key")
+
+
+@patch("main.boto3")
+def test_upload_file_to_s3_failure(mock_boto3):
+    mock_s3_client = MagicMock()
+    mock_boto3.client.return_value = mock_s3_client
+    mock_s3_client.upload_file.side_effect = Exception("Upload error")
+
+    from main import upload_file_to_s3
+
+    result = upload_file_to_s3("file.txt", "bucket", "key")
+    assert result is False
