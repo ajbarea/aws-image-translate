@@ -5,7 +5,7 @@ provider "aws" {
 
 # User Management Module
 module "user_management" {
-  source = "C:/ajsoftworks/aws-image-translate/terraform/modules/user_management"
+  source = "../../modules/user_management"
 
   project_name               = var.project_name
   s3_bucket_arn              = module.image_translation.s3_bucket_arn
@@ -14,7 +14,7 @@ module "user_management" {
 
 # Image Translation Module
 module "image_translation" {
-  source = "C:/ajsoftworks/aws-image-translate/terraform/modules/image_translation"
+  source = "../../modules/image_translation"
 
   project_name       = var.project_name
   s3_bucket_name     = "${var.project_name}-image-storage"
@@ -29,7 +29,7 @@ module "image_translation" {
 
 # API Module
 module "api" {
-  source = "C:/ajsoftworks/aws-image-translate/terraform/modules/api"
+  source = "../../modules/api"
 
   project_name                         = var.project_name
   allowed_origins                      = var.allowed_origins
@@ -40,7 +40,7 @@ module "api" {
 
 # Frontend Hosting Module
 module "frontend_hosting" {
-  source = "C:/ajsoftworks/aws-image-translate/terraform/modules/frontend_hosting"
+  source = "../../modules/frontend_hosting"
 
   bucket_name       = "${var.project_name}-frontend-hosting"
   environment       = "dev"
