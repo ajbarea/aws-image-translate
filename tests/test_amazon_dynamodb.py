@@ -2,15 +2,15 @@ import os
 
 import boto3
 import pytest
-from moto import mock_aws as mock_dynamodb
 from botocore.exceptions import ClientError
+from moto import mock_aws as mock_dynamodb
 
 from config import AWS_REGION
 from src.amazon_dynamodb import (
     create_table_if_not_exists,
     delete_table_if_exists,
-    get_last_processed_post_id,
     get_aws_error_message,
+    get_last_processed_post_id,
     print_table_items,
     table_exists,
     update_last_processed_post_id,
@@ -164,6 +164,65 @@ def test_get_aws_error_message_exception_handling():
     assert msg == "Unknown error occurred"
 
 
+def test_get_aws_error_message_no_response_attribute():
+    """Test get_aws_error_message when error object has no response attribute (line 108->114)."""
+
+    # Create a mock error object without response attribute
+    class MockErrorNoResponse(ClientError):
+        def __init__(self):
+            # Don't call super().__init__ to avoid parameter issues
+            pass
+
+        def __str__(self):
+            return "Mock error without response"
+
+    # Remove the response attribute to test the hasattr check
+    mock_error = MockErrorNoResponse()
+    if hasattr(mock_error, "response"):
+        delattr(mock_error, "response")
+
+    msg = get_aws_error_message(mock_error)
+    assert msg == "Mock error without response"
+
+
+def test_get_aws_error_message_invalid_response_structure():
+    """Test get_aws_error_message when response has invalid structure (line 110->114)."""
+
+    # Test case 1: Response without "Error" key
+    class MockErrorNoErrorKey(ClientError):
+        def __init__(self):
+            # Don't call super().__init__ to avoid parameter issues
+            pass
+
+        @property
+        def response(self):
+            return {"SomeOtherKey": "value"}
+
+        def __str__(self):
+            return "Mock error without Error key"
+
+    error_no_error_key = MockErrorNoErrorKey()
+    msg = get_aws_error_message(error_no_error_key)
+    assert msg == "Mock error without Error key"
+
+    # Test case 2: Response where "Error" is not a dict
+    class MockErrorInvalidError(ClientError):
+        def __init__(self):
+            # Don't call super().__init__ to avoid parameter issues
+            pass
+
+        @property
+        def response(self):
+            return {"Error": "not a dict"}
+
+        def __str__(self):
+            return "Mock error with invalid Error"
+
+    error_invalid_error = MockErrorInvalidError()
+    msg = get_aws_error_message(error_invalid_error)
+    assert msg == "Mock error with invalid Error"
+
+
 # Tests for print_table_items
 @mock_dynamodb
 def test_print_table_items_empty(capsys, aws_credentials):
@@ -214,10 +273,10 @@ def test_print_table_items_scan_error(monkeypatch, capsys):
     # Simulate scan error
     class FakeTable:
         def scan(self):
-            raise Exception("scan fail")
+            raise RuntimeError("scan fail")
 
     class FakeResource:
-        def Table(self, name):
+        def Table(self, name):  # noqa: N802 # AWS API method name
             return FakeTable()
 
     monkeypatch.setattr(
@@ -232,11 +291,11 @@ def test_print_table_items_scan_error(monkeypatch, capsys):
 def test_get_last_processed_post_id_unexpected_error(monkeypatch, capsys):
     # Simulate a non-ClientError exception
     class FakeTable:
-        def get_item(self, Key):
+        def get_item(self, Key):  # noqa: N803 # AWS API parameter name
             raise ValueError("boom")
 
     class FakeResource:
-        def Table(self, name):
+        def Table(self, name):  # noqa: N802 # AWS API method name
             return FakeTable()
 
     monkeypatch.setattr(
@@ -254,11 +313,11 @@ def test_get_last_processed_post_id_unexpected_error(monkeypatch, capsys):
 def test_update_last_processed_post_id_unexpected_error(monkeypatch, capsys):
     # Simulate a non-ClientError exception
     class FakeTable:
-        def put_item(self, Item):
+        def put_item(self, Item):  # noqa: N803 # AWS API parameter name
             raise RuntimeError("fail")
 
     class FakeResource:
-        def Table(self, name):
+        def Table(self, name):  # noqa: N802 # AWS API method name
             return FakeTable()
 
     monkeypatch.setattr(

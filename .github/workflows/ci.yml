@@ -37,7 +37,6 @@ jobs:
           REDDIT_CLIENT_SECRET: test_client_secret
           REDDIT_USER_AGENT: test_user_agent
           DYNAMODB_TABLE_NAME: test_table
-          SOURCE_LANGUAGE_CODE: es
           TARGET_LANGUAGE_CODE: en
         run: |
           pytest --cov --cov-branch --cov-report=xml
@@ -96,7 +95,6 @@ jobs:
           REDDIT_CLIENT_SECRET: test_client_secret
           REDDIT_USER_AGENT: test_user_agent
           DYNAMODB_TABLE_NAME: test_table
-          SOURCE_LANGUAGE_CODE: es
           TARGET_LANGUAGE_CODE: en
         run: |
           pytest --cov --cov-branch --cov-report=xml

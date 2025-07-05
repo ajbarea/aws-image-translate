@@ -39,16 +39,19 @@ All Terraform commands should be executed from this `terraform/` directory.
     - `frontend_bucket_name`
 
 2. **Initialize Terraform:**
+
     ```bash
     terraform init
     ```
 
 3. **Plan the deployment:**
+
     ```bash
     terraform plan
     ```
 
 4. **Apply the infrastructure:**
+
     ```bash
     terraform apply
     ```
@@ -76,6 +79,7 @@ All configuration is managed in `variables.tf` and `terraform.tfvars`.
 ## 🗑️ Cleanup
 
 To destroy all resources and avoid ongoing costs:
+
 ```bash
 terraform destroy
 ```

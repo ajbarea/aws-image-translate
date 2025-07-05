@@ -45,13 +45,13 @@ def test_extract_image_urls_from_submission_url_and_selftext():
 
 
 def test_is_supported_media_url():
-    assert reddit_scraper.is_supported_media_url("http://example.com/image.jpg")
-    assert reddit_scraper.is_supported_media_url("http://example.com/photo.jpeg")
-    assert reddit_scraper.is_supported_media_url("http://example.com/pic.png")
-    assert reddit_scraper.is_supported_media_url("http://example.com/animation.gif")
-    assert reddit_scraper.is_supported_media_url("http://example.com/photo.webp")
-    assert not reddit_scraper.is_supported_media_url("http://example.com/doc.pdf")
-    assert not reddit_scraper.is_supported_media_url("http://example.com/video.mp4")
+    assert reddit_scraper.is_supported_media_url("https://example.com/image.jpg")
+    assert reddit_scraper.is_supported_media_url("https://example.com/photo.jpeg")
+    assert reddit_scraper.is_supported_media_url("https://example.com/pic.png")
+    assert reddit_scraper.is_supported_media_url("https://example.com/animation.gif")
+    assert reddit_scraper.is_supported_media_url("https://example.com/photo.webp")
+    assert not reddit_scraper.is_supported_media_url("https://example.com/doc.pdf")
+    assert not reddit_scraper.is_supported_media_url("https://example.com/video.mp4")
 
 
 def test_is_direct_media_url():
@@ -118,6 +118,23 @@ def test_create_reddit_credentials_missing_creds():
     with pytest.raises(ValueError) as exc_info:
         reddit_scraper.create_reddit_credentials()
     assert "Missing Reddit credentials" in str(exc_info.value)
+
+
+@patch.dict(os.environ, {}, clear=True)  # Clear all environment variables
+@patch("src.reddit_scraper.REDDIT_CLIENT_ID", "real_id")
+@patch("src.reddit_scraper.REDDIT_CLIENT_SECRET", "real_secret")
+@patch("src.reddit_scraper.REDDIT_USER_AGENT", "real_agent")
+def test_create_reddit_credentials_no_env_local_file():
+    """Test create_reddit_credentials when .env.local doesn't exist (line 66->69)."""
+    with patch("src.reddit_scraper.Path") as mock_path:
+        mock_env_path = MagicMock()
+        mock_env_path.exists.return_value = False  # .env.local doesn't exist
+        mock_path.return_value.parent.parent.__truediv__.return_value = mock_env_path
+
+        creds = reddit_scraper.create_reddit_credentials()
+        assert creds["client_id"] == "real_id"
+        assert creds["client_secret"] == "real_secret"
+        assert creds["user_agent"] == "real_agent"
 
 
 def test_init_reddit_client_success_and_failure(monkeypatch):
@@ -279,6 +296,92 @@ def test_get_new_image_posts_since_with_after_fullname():
     # Verify that subreddit.new was called with the after parameter
     mock_subreddit.new.assert_called_with(limit=25, params={"after": "t3_previous"})
     assert len(posts) == 1
+
+
+def test_get_new_image_posts_since_without_after_fullname():
+    """Test get_new_image_posts_since when after_fullname is None (line 316->315)."""
+    mock_reddit = MagicMock()
+    mock_subreddit = MagicMock()
+    mock_reddit.subreddit.return_value = mock_subreddit
+
+    submissions = [
+        DummySubmission(url="https://i.redd.it/test.jpg", fullname="t3_test")
+    ]
+    mock_subreddit.new.return_value = submissions
+
+    posts = reddit_scraper.get_new_image_posts_since(mock_reddit, after_fullname=None)
+
+    # Verify that subreddit.new was called without the after parameter
+    mock_subreddit.new.assert_called_with(limit=25)
+    assert len(posts) == 1
+
+
+def test_get_new_image_posts_since_no_posts_found():
+    """Test get_new_image_posts_since when no posts are found (line 325->334)."""
+    mock_reddit = MagicMock()
+    mock_subreddit = MagicMock()
+    mock_reddit.subreddit.return_value = mock_subreddit
+
+    # No submissions found
+    mock_subreddit.new.return_value = []
+
+    posts = reddit_scraper.get_new_image_posts_since(mock_reddit)
+
+    # Should return empty list when no posts are found
+    assert posts == []
+
+
+def test_get_new_image_posts_since_duplicate_posts():
+    """Test get_new_image_posts_since when duplicate posts are filtered out (line 329->328)."""
+    mock_reddit = MagicMock()
+    mock_subreddit = MagicMock()
+    mock_reddit.subreddit.return_value = mock_subreddit
+
+    # Create submissions with duplicate URL
+    submissions = [
+        DummySubmission(
+            url="https://i.redd.it/same.jpg", fullname="t3_1", created_utc=1
+        ),
+        DummySubmission(
+            url="https://i.redd.it/same.jpg", fullname="t3_1", created_utc=1
+        ),  # Duplicate
+    ]
+    mock_subreddit.new.return_value = submissions
+
+    posts = reddit_scraper.get_new_image_posts_since(mock_reddit)
+
+    # Should only return one post, not the duplicate
+    assert len(posts) == 1
+    assert posts[0] == ("t3_1", "https://i.redd.it/same.jpg")
+
+
+def test_get_new_image_posts_since_unsupported_media_url():
+    """Test get_new_image_posts_since when URLs are found but not supported media format (line 316->315)."""
+    mock_reddit = MagicMock()
+    mock_subreddit = MagicMock()
+    mock_reddit.subreddit.return_value = mock_subreddit
+
+    # Create a submission with a URL that contains an image domain but isn't supported by the regex
+    # This will pass the IMAGE_DOMAINS check but not match the regex pattern
+    submissions = [
+        DummySubmission(
+            url="https://i.redd.it/some_video.mp4", fullname="t3_1", created_utc=1
+        ),
+    ]
+    mock_subreddit.new.return_value = submissions
+
+    # Mock extract_image_urls_from_submission to return a URL that would fail is_supported_media_url
+    def mock_extract_urls(submission):
+        return {"https://i.redd.it/some_video.mp4"}
+
+    with patch(
+        "src.reddit_scraper.extract_image_urls_from_submission",
+        side_effect=mock_extract_urls,
+    ):
+        posts = reddit_scraper.get_new_image_posts_since(mock_reddit)
+
+    # Should return empty list since the URL is not supported (mp4 is not in SUPPORTED_MEDIA_FORMATS)
+    assert posts == []
 
 
 def test_get_new_image_posts_since_exception_handling():

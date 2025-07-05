@@ -1,3 +1,67 @@
+[project]
+name = "aws-image-translate"
+version = "1.0.0"
+description = "AWS Image Translation Service"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# Main dependencies (from requirements.txt)
+dependencies = [
+    "boto3",
+    "praw",
+    "requests",
+    "python-dotenv",
+    "beautifulsoup4",
+    "aiohttp",
+    "aiofiles",
+    "asyncpraw",
+]
+
+# Optional dependencies for development (from requirements-dev.txt)
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "moto>=4.2.0",
+    # Code formatting and linting
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "flake8-pyproject>=1.0.0",
+    "isort>=5.12.0",
+    # Type checking
+    "mypy>=1.0.0",
+    "types-requests>=2.0.0",
+    "types-boto3>=1.0.0",
+    "mypy-boto3-dynamodb>=1.0.0",
+    "mypy-boto3-s3>=1.0.0",
+    "mypy-boto3-rekognition>=1.0.0",
+    "mypy-boto3-translate>=1.0.0",
+    "mypy-boto3-comprehend>=1.0.0",
+    # Additional development tools
+    "pre-commit>=3.0.0",
+    # Async support for testing
+    "aioresponses>=0.7.0",
+    "aiofiles>=23.0.0",
+    "asyncpraw>=7.7.0",
+    "types-aiofiles>=23.0.0",
+]
+
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore::DeprecationWarning:botocore.*",

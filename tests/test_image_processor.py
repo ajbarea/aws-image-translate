@@ -16,11 +16,11 @@ from src.image_processor import (
 )
 
 # Test data
-TEST_URL_JPG = "http://example.com/image.jpg"
-TEST_URL_PNG = "http://example.com/image.png"
-TEST_URL_GIF = "http://example.com/image.gif"
-TEST_URL_UNSUPPORTED = "http://example.com/document.pdf"
-TEST_URL_NO_EXT = "http://example.com/image"
+TEST_URL_JPG = "https://example.com/image.jpg"
+TEST_URL_PNG = "https://example.com/image.png"
+TEST_URL_GIF = "https://example.com/image.gif"
+TEST_URL_UNSUPPORTED = "https://example.com/document.pdf"
+TEST_URL_NO_EXT = "https://example.com/image"
 TEST_POST_ID_1 = "t3_post1"
 TEST_POST_ID_2 = "t3_post2"
 
@@ -31,11 +31,11 @@ class TestInferContentType:
     @pytest.mark.parametrize(
         "url,original_content_type,expected",
         [
-            ("http://example.com/image.jpg", "image/jpeg", "image/jpeg"),
-            ("http://example.com/image.png", "application/octet-stream", "image/png"),
-            ("http://example.com/image.gif", "image/gif", "image/gif"),
-            ("http://example.com/document.pdf", "application/pdf", None),
-            ("http://example.com/unknown", "unknown/type", None),
+            ("https://example.com/image.jpg", "image/jpeg", "image/jpeg"),
+            ("https://example.com/image.png", "application/octet-stream", "image/png"),
+            ("https://example.com/image.gif", "image/gif", "image/gif"),
+            ("https://example.com/document.pdf", "application/pdf", None),
+            ("https://example.com/unknown", "unknown/type", None),
         ],
     )
     def test_infer_content_type_from_url(self, url, original_content_type, expected):
@@ -179,7 +179,7 @@ class TestGenerateS3ObjectName:
             ),
             (
                 TEST_POST_ID_2,
-                "http://example.com/path/to/image.png?query=param",
+                "https://example.com/path/to/image.png?query=param",
                 "image/png",
                 "translator",
                 "r_translator/t3_post2/example_com_image_png.png",

@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from src.amazon_translate import translate_text, detect_language
+from src.amazon_translate import detect_language, translate_text
 
 
 @patch("src.amazon_translate.boto3")
@@ -26,7 +26,9 @@ def test_detect_language_success(mock_boto3):
     mock_client = MagicMock()
     mock_boto3.client.return_value = mock_client
     # Simulate detect_dominant_language returning a list of languages
-    mock_client.detect_dominant_language.return_value = {"Languages": [{"LanguageCode": "es"}]}
+    mock_client.detect_dominant_language.return_value = {
+        "Languages": [{"LanguageCode": "es"}]
+    }
     result = detect_language("Hola mundo!")
     assert result == "es"
 

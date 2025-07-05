@@ -4,10 +4,10 @@ from typing import List, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-from config import S3_IMAGE_BUCKET, SOURCE_LANGUAGE_CODE, TARGET_LANGUAGE_CODE
+from config import S3_IMAGE_BUCKET, TARGET_LANGUAGE_CODE
 from src.amazon_rekognition import detect_text_from_s3
 from src.amazon_s3 import list_images_in_bucket
-from src.amazon_translate import translate_text
+from src.amazon_translate import detect_language, translate_text
 
 
 def upload_file_to_s3(file_path: str, bucket: str, key: str) -> bool:
@@ -21,9 +21,7 @@ def upload_file_to_s3(file_path: str, bucket: str, key: str) -> bool:
         return False
 
 
-def process_image(
-    photo: str, bucket: str, source_lang: str, target_lang: str
-) -> Optional[str]:
+def process_image(photo: str, bucket: str, target_lang: str) -> Optional[str]:
     """Detect text in an image from S3 and translate it."""
     print(f"\nDetecting text in s3://{bucket}/{photo} ...")
     try:
@@ -34,6 +32,10 @@ def process_image(
     print("Detected text:", detected_text)
     if detected_text:
         try:
+            # Automatically detect source language
+            source_lang = detect_language(detected_text)
+            print(f"Detected source language: {source_lang}")
+
             translated = translate_text(
                 detected_text,
                 source_lang=source_lang,
@@ -49,7 +51,7 @@ def process_image(
         return None
 
 
-def process_all_images(bucket: str, source_lang: str, target_lang: str) -> List[str]:
+def process_all_images(bucket: str, target_lang: str) -> List[str]:
     """Process all images in the given S3 bucket."""
     print(f"Listing images in s3 bucket: s3://{bucket} ...")
     try:
@@ -60,7 +62,7 @@ def process_all_images(bucket: str, source_lang: str, target_lang: str) -> List[
     print("Found images:", images)
     results = []
     for photo in images:
-        result = process_image(photo, bucket, source_lang, target_lang)
+        result = process_image(photo, bucket, target_lang)
         if result:
             results.append(result)
     return results
@@ -68,7 +70,6 @@ def process_all_images(bucket: str, source_lang: str, target_lang: str) -> List[
 
 def main(
     bucket: str = S3_IMAGE_BUCKET,
-    source_lang: str = SOURCE_LANGUAGE_CODE,
     target_lang: str = TARGET_LANGUAGE_CODE,
 ) -> None:
     """Main entry point for processing images."""
@@ -85,7 +86,7 @@ def main(
             print("✗ Failed to upload image. Skipping image processing.")
             return
 
-    process_image(image_name, bucket, source_lang, target_lang)
+    process_image(image_name, bucket, target_lang)
 
 
 def cli() -> None:
@@ -96,19 +97,13 @@ def cli() -> None:
         "--bucket", type=str, default=S3_IMAGE_BUCKET, help="S3 bucket name"
     )
     parser.add_argument(
-        "--source-lang",
-        type=str,
-        default=SOURCE_LANGUAGE_CODE,
-        help="Source language code",
-    )
-    parser.add_argument(
         "--target-lang",
         type=str,
         default=TARGET_LANGUAGE_CODE,
         help="Target language code",
     )
     args = parser.parse_args()
-    main(args.bucket, args.source_lang, args.target_lang)
+    main(args.bucket, args.target_lang)
 
 
 def s3_object_exists(bucket_name: str, object_key: str) -> bool:

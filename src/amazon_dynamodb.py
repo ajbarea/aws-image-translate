@@ -6,7 +6,7 @@ in Reddit ingestion pipelines or similar workflows.
 """
 
 import sys
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, Optional, cast
 
 import boto3
 from botocore.exceptions import ClientError
@@ -105,7 +105,6 @@ def get_aws_error_message(error: ClientError) -> str:
         str: A formatted error message string.
     """
     try:
-        # The response field and its structure is not guaranteed
         if hasattr(error, "response"):
             response = cast(Dict[str, Any], error.response)
             if "Error" in response and isinstance(response["Error"], dict):

@@ -112,7 +112,7 @@ print(f"Failed: {result['failed_count']} images")
 python main.py
 
 # Process with custom parameters
-python main.py --bucket my-bucket --source-lang es --target-lang en
+python main.py --bucket my-bucket --target-lang en
 ```
 
 ## 📚 Module Documentation
