@@ -1,7 +1,5 @@
-import asyncio
-import io
 import logging
-from unittest.mock import ANY, AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import aiohttp
 import pytest
@@ -448,3 +446,274 @@ class TestLambdaHandler:
         assert response["statusCode"] == 200, "Should succeed"
         assert response["body"]["total_processed"] == 6, "Should sum processed counts"
         assert response["body"]["total_failed"] == 2, "Should sum failed counts"
+
+
+class TestHelperFunctions:
+    """Test helper functions in image_processor."""
+
+    def test_get_extension_with_unknown_content_type(self):
+        """Test _get_extension with unknown content type and fallback."""
+        from src.image_processor import _get_extension
+
+        # Test with unknown content type but valid URL extension
+        result = _get_extension(
+            "image.jpg", "unknown/type", "https://example.com/image.jpg"
+        )
+        assert result == ".jpg"
+
+        # Test with unknown content type and no valid extension
+        result = _get_extension("image", "unknown/type", "https://example.com/image")
+        assert result == ".img"
+
+    def test_fallback_cleaned_base_name_with_empty_path(self):
+        """Test _fallback_cleaned_base_name with empty path segments."""
+        from urllib.parse import urlparse
+
+        from src.image_processor import _fallback_cleaned_base_name
+
+        # Test with empty path segments
+        parsed_url = urlparse("https://example.com/")
+        result = _fallback_cleaned_base_name(parsed_url, "https://example.com/")
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_fallback_cleaned_base_name_with_query_fragment(self):
+        """Test _fallback_cleaned_base_name with query and fragment."""
+        from urllib.parse import urlparse
+
+        from src.image_processor import _fallback_cleaned_base_name
+
+        # Test with query and fragment but no path
+        parsed_url = urlparse("https://example.com/?query=abc&param=123#fragment")
+        result = _fallback_cleaned_base_name(
+            parsed_url, "https://example.com/?query=abc&param=123#fragment"
+        )
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_get_cleaned_base_name_with_only_extension(self):
+        """Test _get_cleaned_base_name when base name is only extension."""
+        from urllib.parse import urlparse
+
+        from src.image_processor import _get_cleaned_base_name
+
+        parsed_url = urlparse("https://example.com/test.jpg")
+        result = _get_cleaned_base_name(
+            parsed_url, ".jpg", ".jpg", "https://example.com/test.jpg"
+        )
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    @pytest.mark.asyncio
+    async def test_handle_retry_logic_async_max_retries(self):
+        """Test _handle_retry_logic_async when max retries reached."""
+        from src.image_processor import _handle_retry_logic_async
+
+        result = await _handle_retry_logic_async(
+            5, 3, "https://example.com", Exception("Test")
+        )
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_handle_retry_logic_async_continue_retry(self):
+        """Test _handle_retry_logic_async when retries continue."""
+        from src.image_processor import _handle_retry_logic_async
+
+        result = await _handle_retry_logic_async(
+            1, 3, "https://example.com", Exception("Test")
+        )
+        assert result == 2
+
+    @pytest.mark.asyncio
+    @patch("src.image_processor.init_reddit_client")
+    @patch("src.image_processor.get_last_processed_post_id")
+    @patch("src.image_processor.get_new_image_posts_since")
+    @patch("src.image_processor.upload_fileobj_to_s3")
+    @patch("src.image_processor.update_last_processed_post_id")
+    async def test_process_new_images_no_successful_uploads(
+        self,
+        mock_update_ddb,
+        mock_upload_s3,
+        mock_get_new_posts,
+        mock_get_last_id,
+        mock_init_reddit,
+    ):
+        """Test process_new_images when no successful uploads occur."""
+        mock_init_reddit.return_value = MagicMock()
+        mock_get_last_id.return_value = "t3_olderpost"
+        mock_get_new_posts.return_value = [
+            ("t3_post1", "https://example.com/image.jpg")
+        ]
+        mock_upload_s3.return_value = False  # All uploads fail
+        mock_update_ddb.return_value = True
+
+        with patch("src.image_processor.aiohttp.ClientSession") as mock_session_class:
+            mock_session = AsyncMock()
+            mock_session_class.return_value.__aenter__.return_value = mock_session
+
+            mock_response = AsyncMock()
+            mock_response.status = 200
+            mock_response.headers = {"Content-Type": "image/jpeg"}
+            mock_response.read = AsyncMock(return_value=b"jpeg_data")
+            mock_response.raise_for_status = Mock()
+
+            context_manager = AsyncMock()
+            context_manager.__aenter__ = AsyncMock(return_value=mock_response)
+            context_manager.__aexit__ = AsyncMock(return_value=None)
+            mock_session.get = Mock(return_value=context_manager)
+
+            result = await process_new_images_from_reddit_async(
+                S3_IMAGE_BUCKET, DYNAMODB_TABLE_NAME, "translator", reddit_fetch_limit=5
+            )
+
+        assert result["status"] == "success"
+        assert result["processed_count"] == 0
+        assert result["failed_count"] == 1
+        # Should not update DynamoDB since no successful uploads
+        mock_update_ddb.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("src.image_processor.init_reddit_client")
+    @patch("src.image_processor.get_last_processed_post_id")
+    @patch("src.image_processor.get_new_image_posts_since")
+    @patch("src.image_processor.upload_fileobj_to_s3")
+    @patch("src.image_processor.update_last_processed_post_id")
+    async def test_process_new_images_update_ddb_failure(
+        self,
+        mock_update_ddb,
+        mock_upload_s3,
+        mock_get_new_posts,
+        mock_get_last_id,
+        mock_init_reddit,
+    ):
+        """Test process_new_images when DynamoDB update fails."""
+        mock_init_reddit.return_value = MagicMock()
+        mock_get_last_id.return_value = "t3_olderpost"
+        mock_get_new_posts.return_value = [
+            ("t3_post1", "https://example.com/image.jpg")
+        ]
+        mock_upload_s3.return_value = True
+        mock_update_ddb.return_value = False  # DynamoDB update fails
+
+        with patch("src.image_processor.aiohttp.ClientSession") as mock_session_class:
+            mock_session = AsyncMock()
+            mock_session_class.return_value.__aenter__.return_value = mock_session
+
+            mock_response = AsyncMock()
+            mock_response.status = 200
+            mock_response.headers = {"Content-Type": "image/jpeg"}
+            mock_response.read = AsyncMock(return_value=b"jpeg_data")
+            mock_response.raise_for_status = Mock()
+
+            context_manager = AsyncMock()
+            context_manager.__aenter__ = AsyncMock(return_value=mock_response)
+            context_manager.__aexit__ = AsyncMock(return_value=None)
+            mock_session.get = Mock(return_value=context_manager)
+
+            result = await process_new_images_from_reddit_async(
+                S3_IMAGE_BUCKET, DYNAMODB_TABLE_NAME, "translator", reddit_fetch_limit=5
+            )
+
+        assert result["status"] == "success"
+        assert result["processed_count"] == 1
+        mock_update_ddb.assert_called_once_with(
+            DYNAMODB_TABLE_NAME, "r/translator", "t3_post1"
+        )
+
+    @pytest.mark.asyncio
+    async def test_download_image_async_reaches_max_retries(self):
+        """Test download_image_async when it reaches max retries."""
+        from src.image_processor import download_image_async
+
+        mock_session = AsyncMock()
+        mock_session.get = Mock(side_effect=aiohttp.ClientError("Connection error"))
+
+        # Test with retries = 0 to immediately hit max retries
+        image_bytes, content_type = await download_image_async(
+            mock_session, TEST_URL_JPG, retries=0
+        )
+
+        assert image_bytes is None
+        assert content_type is None
+
+    def test_generate_s3_object_name_with_exception(self):
+        """Test generate_s3_object_name when an exception occurs."""
+        from src.image_processor import generate_s3_object_name
+
+        # This should trigger the exception handler and return fallback name
+        with patch("src.image_processor.urlparse") as mock_urlparse:
+            mock_urlparse.side_effect = Exception("Parse error")
+
+            result = generate_s3_object_name(
+                "test_post", "https://example.com/image.jpg", "image/jpeg", "translator"
+            )
+
+            assert result.startswith("r_translator/")
+            assert "test_post" in result
+            assert "unknown_image_" in result
+
+    def test_fallback_cleaned_base_name_empty_fallback(self):
+        """Test _fallback_cleaned_base_name when fallback is empty."""
+        from urllib.parse import urlparse
+
+        from src.image_processor import _fallback_cleaned_base_name
+
+        # Test URL with empty query and fragment
+        parsed_url = urlparse("https://example.com/")
+        # Mock to ensure empty fallback triggers hash fallback
+        with patch("src.image_processor.hex") as mock_hex:
+            mock_hex.return_value = "1234567890abcdef"
+            result = _fallback_cleaned_base_name(parsed_url, "https://example.com/")
+            # Should use hash as fallback when no other content is available
+            assert isinstance(result, str)
+            assert len(result) > 0
+
+    @pytest.mark.asyncio
+    @patch("src.image_processor.init_reddit_client")
+    @patch("src.image_processor.get_last_processed_post_id")
+    @patch("src.image_processor.get_new_image_posts_since")
+    @patch("src.image_processor.upload_fileobj_to_s3")
+    @patch("src.image_processor.update_last_processed_post_id")
+    async def test_process_new_images_warning_case(
+        self,
+        mock_update_ddb,
+        mock_upload_s3,
+        mock_get_new_posts,
+        mock_get_last_id,
+        mock_init_reddit,
+    ):
+        """Test process_new_images warning case with no successful uploads but new posts."""
+        mock_init_reddit.return_value = MagicMock()
+        mock_get_last_id.return_value = "t3_olderpost"
+        mock_get_new_posts.return_value = [
+            ("t3_post1", "https://example.com/image.jpg")
+        ]
+        mock_upload_s3.return_value = False  # Upload fails
+        mock_update_ddb.return_value = True
+
+        # Mock download that returns None (simulating download failure)
+        with patch("src.image_processor.aiohttp.ClientSession") as mock_session_class:
+            mock_session = AsyncMock()
+            mock_session_class.return_value.__aenter__.return_value = mock_session
+
+            # Mock failed download
+            mock_response = AsyncMock()
+            mock_response.status = 200
+            mock_response.headers = {"Content-Type": "unsupported/type"}
+            mock_response.read = AsyncMock(return_value=b"data")
+            mock_response.raise_for_status = Mock()
+
+            context_manager = AsyncMock()
+            context_manager.__aenter__ = AsyncMock(return_value=mock_response)
+            context_manager.__aexit__ = AsyncMock(return_value=None)
+            mock_session.get = Mock(return_value=context_manager)
+
+            result = await process_new_images_from_reddit_async(
+                S3_IMAGE_BUCKET, DYNAMODB_TABLE_NAME, "translator", reddit_fetch_limit=5
+            )
+
+        assert result["status"] == "success"
+        assert result["processed_count"] == 0
+        assert result["failed_count"] == 1
+        # Should not update DynamoDB since no successful uploads
+        mock_update_ddb.assert_not_called()
