@@ -146,3 +146,218 @@ def test_get_supported_extensions():
     assert "jpg" in extensions["image"]
     assert "mp4" in extensions["video"]
     assert set(extensions["all"]) == set(extensions["image"] + extensions["video"])
+
+
+def test_fallback_extension_extraction():
+    """Test fallback extension extraction for edge cases."""
+    from src.enhanced_media_utils import _fallback_extension_extraction
+
+    # Test with URL containing extension pattern
+    assert _fallback_extension_extraction("https://example.com/file.jpg") == "jpg"
+    assert _fallback_extension_extraction("https://example.com/file.mp4") == "mp4"
+
+    # Test with URL not containing supported extension
+    assert _fallback_extension_extraction("https://example.com/file.xyz") == "jpg"
+
+    # Test with URL that causes exception
+    with patch("src.enhanced_media_utils.SUPPORTED_EXTENSIONS", []):
+        assert _fallback_extension_extraction("https://example.com/file.jpg") == "jpg"
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_parse_html_for_media_tag_exceptions(mock_get):
+    """Test parse_html_for_media with tag exceptions."""
+    mock_response = MagicMock()
+    mock_response.content = """
+        <meta property="og:video" content="">
+        <meta property="og:image" content="">
+    """.encode()
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    url, ext = parse_html_for_media("https://example.com", {})
+    assert url is None
+    assert ext is None
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_parse_html_for_media_attribute_error(mock_get):
+    """Test parse_html_for_media with attribute errors."""
+    mock_response = MagicMock()
+    mock_response.content = """
+        <meta property="og:video">
+        <meta property="og:image">
+    """.encode()
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    url, ext = parse_html_for_media("https://example.com", {})
+    assert url is None
+    assert ext is None
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_enhanced_download_media_invalid_url(mock_get):
+    """Test enhanced_download_media with invalid URL."""
+    content, content_type = enhanced_download_media("not_a_url")
+    assert content is None
+    assert content_type is None
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_enhanced_download_media_size_during_download(mock_get):
+    """Test enhanced_download_media with file too large during download."""
+    mock_response = MagicMock()
+    mock_response.headers = {"Content-Type": "image/jpeg"}
+    # Create chunks that exceed max_size
+    large_chunk = b"x" * (10 * 1024 * 1024)  # 10MB chunk
+    mock_response.iter_content.return_value = [large_chunk] * 10  # 100MB total
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    content, content_type = enhanced_download_media(
+        "https://example.com/large.jpg", max_size=50 * 1024 * 1024
+    )
+    assert content is None
+    assert content_type is None
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_enhanced_download_media_request_exception(mock_get):
+    """Test enhanced_download_media with request exception."""
+    from requests.exceptions import RequestException
+
+    mock_get.side_effect = RequestException("Network error")
+
+    content, content_type = enhanced_download_media("https://example.com/image.jpg")
+    assert content is None
+    assert content_type is None
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_enhanced_download_media_media_error(mock_get):
+    """Test enhanced_download_media with MediaError."""
+    mock_response = MagicMock()
+    mock_response.headers = {"content-length": str(100 * 1024 * 1024)}  # 100MB
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    content, content_type = enhanced_download_media(
+        "https://example.com/large.jpg", max_size=10 * 1024 * 1024
+    )
+    assert content is None
+    assert content_type is None
+
+
+def test_get_project_root_path():
+    """Test get_project_root_path function."""
+    from src.enhanced_media_utils import get_project_root_path
+
+    root_path = get_project_root_path()
+    assert isinstance(root_path, str)
+    assert root_path.endswith("aws-image-translate")
+
+
+def test_get_file_extension_fallback_exception():
+    """Test get_file_extension fallback with exception."""
+    from src.enhanced_media_utils import get_file_extension
+
+    # Test with URL that might cause exception in fallback
+    with patch(
+        "src.enhanced_media_utils._fallback_extension_extraction"
+    ) as mock_fallback:
+        mock_fallback.side_effect = [AttributeError("test error"), "jpg"]
+        result = get_file_extension("https://example.com/image.jpg")
+        assert result == "jpg"
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_parse_html_for_media_both_tags_empty_content(mock_get):
+    """Test parse_html_for_media when both video and image tags have empty content."""
+    from bs4 import BeautifulSoup
+
+    mock_response = MagicMock()
+    mock_response.content = """
+        <meta property="og:video" content="">
+        <meta property="og:image" content="">
+    """.encode()
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    # Override the soup.find to return a mock tag with empty content
+    with patch("src.enhanced_media_utils.BeautifulSoup") as mock_soup_class:
+        mock_soup = MagicMock()
+        mock_soup_class.return_value = mock_soup
+
+        # Mock video tag with empty content
+        mock_video_tag = MagicMock()
+        mock_video_tag.get.return_value = ""
+
+        # Mock image tag with empty content
+        mock_image_tag = MagicMock()
+        mock_image_tag.get.return_value = ""
+
+        mock_soup.find.side_effect = [mock_video_tag, mock_image_tag]
+
+        url, ext = parse_html_for_media("https://example.com", {})
+        assert url is None
+        assert ext is None
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_parse_html_for_media_video_tag_type_error(mock_get):
+    """Test parse_html_for_media when video tag causes TypeError."""
+    mock_response = MagicMock()
+    mock_response.content = """
+        <meta property="og:video" content="https://example.com/video.mp4">
+    """.encode()
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    with patch("src.enhanced_media_utils.BeautifulSoup") as mock_soup_class:
+        mock_soup = MagicMock()
+        mock_soup_class.return_value = mock_soup
+
+        # Mock video tag that causes TypeError
+        mock_video_tag = MagicMock()
+        mock_video_tag.get.side_effect = TypeError("test error")
+
+        mock_soup.find.side_effect = [mock_video_tag, None]
+
+        url, ext = parse_html_for_media("https://example.com", {})
+        assert url is None
+        assert ext is None
+
+
+@patch("src.enhanced_media_utils.requests.get")
+def test_parse_html_for_media_image_tag_type_error(mock_get):
+    """Test parse_html_for_media when image tag causes TypeError."""
+    mock_response = MagicMock()
+    mock_response.content = """
+        <meta property="og:image" content="https://example.com/image.jpg">
+    """.encode()
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    with patch("src.enhanced_media_utils.BeautifulSoup") as mock_soup_class:
+        mock_soup = MagicMock()
+        mock_soup_class.return_value = mock_soup
+
+        # Mock image tag that causes TypeError
+        mock_image_tag = MagicMock()
+        mock_image_tag.get.side_effect = TypeError("test error")
+
+        mock_soup.find.side_effect = [None, mock_image_tag]
+
+        url, ext = parse_html_for_media("https://example.com", {})
+        assert url is None
+        assert ext is None
+
+
+def test_fallback_extension_extraction_attribute_error():
+    """Test _fallback_extension_extraction with AttributeError."""
+    from src.enhanced_media_utils import _fallback_extension_extraction
+
+    # Test edge case that might cause AttributeError
+    result = _fallback_extension_extraction(None)  # type: ignore[arg-type]  # NOSONAR
+    assert result == "jpg"
