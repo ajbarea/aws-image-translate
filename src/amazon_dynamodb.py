@@ -21,9 +21,7 @@ def get_dynamodb_resource() -> DynamoDBServiceResource:
     Returns:
         DynamoDBServiceResource: A boto3 DynamoDB resource configured with the default AWS region.
     """
-    return cast(
-        DynamoDBServiceResource, boto3.resource("dynamodb", region_name=AWS_REGION)
-    )
+    return boto3.resource("dynamodb", region_name=AWS_REGION)
 
 
 def get_last_processed_post_id(table_name: str, subreddit_key: str) -> Optional[str]:
