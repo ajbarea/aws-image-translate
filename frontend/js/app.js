@@ -1,44 +1,189 @@
 import { AWS_CONFIG } from "./config.js";
 import { AuthManager } from "./auth.js";
 
+// Import components
+import { AuthComponent } from "./components/AuthComponent.js";
+import { FileUploadComponent } from "./components/FileUploadComponent.js";
+import { UploadQueueComponent } from "./components/UploadQueueComponent.js";
+import { LanguageSelectionComponent } from "./components/LanguageSelectionComponent.js";
+import { ResultsComponent } from "./components/ResultsComponent.js";
+
+/**
+ * Main application class orchestrating all components
+ */
 class ImageProcessor {
   constructor() {
     console.log("🚀 ImageProcessor: Initializing application...");
+
+    // Core services
     this.auth = new AuthManager(AWS_CONFIG);
-    this.s3 = null; // Initialize after authentication
-    this.uploadQueue = [];
+    this.s3 = null;
     this.isAuthenticated = false;
 
-    this.setupUI();
-    this.setupAuth();
-    console.log("✅ ImageProcessor: Application initialized");
+    // Components
+    this.components = {
+      auth: null,
+      fileUpload: null,
+      uploadQueue: null,
+      languageSelection: null,
+      results: null,
+    };
+
+    // UI sections
+    this.loginSection = null;
+    this.appSection = null;
+    this.processBtn = null;
+
+    console.log(
+      "✅ ImageProcessor: Application structure initialized. Waiting for components."
+    );
   }
 
   async initialize() {
-    await this.checkInitialAuthState();
+    // Listen for components loaded event
+    document.addEventListener("componentsLoaded", async () => {
+      console.log(
+        "🔧 ImageProcessor: 'componentsLoaded' event received. Initializing UI and Auth."
+      );
+      await this.initializeComponents();
+      await this.checkInitialAuthState();
+    });
+
+    document.addEventListener("componentsLoadFailed", (e) => {
+      console.error(
+        "❌ ImageProcessor: 'componentsLoadFailed' event received.",
+        e.detail
+      );
+      this.showCriticalError(
+        "Failed to load essential parts of the application. Please refresh the page or try again later."
+      );
+    });
+  }
+
+  async initializeComponents() {
+    try {
+      // Cache main UI sections
+      this.loginSection = document.getElementById("loginSection");
+      this.appSection = document.getElementById("appSection");
+      this.processBtn = document.getElementById("processBtn");
+
+      if (!this.loginSection || !this.appSection) {
+        throw new Error("Critical UI sections not found");
+      }
+
+      // Initialize components
+      this.components.auth = new AuthComponent("loginSection", this.auth);
+      this.components.fileUpload = new FileUploadComponent(
+        "file-upload-placeholder",
+        {
+          acceptedTypes: ["image/*"],
+          maxFileSize: 10 * 1024 * 1024, // 10MB
+          maxFiles: 10,
+        }
+      );
+      this.components.uploadQueue = new UploadQueueComponent(
+        "upload-list-placeholder"
+      );
+      this.components.languageSelection = new LanguageSelectionComponent(
+        "language-selection-placeholder",
+        {
+          defaultLanguage: "en",
+        }
+      );
+      this.components.results = new ResultsComponent("results-placeholder");
+
+      // Initialize all components
+      for (const [name, component] of Object.entries(this.components)) {
+        if (component) {
+          await component.initialize();
+          console.log(`✅ ImageProcessor: ${name} component initialized`);
+        }
+      }
+
+      // Setup inter-component communication
+      this.setupEventHandlers();
+
+      // Setup process button
+      this.setupProcessButton();
+
+      console.log("✅ ImageProcessor: All components initialized successfully");
+    } catch (error) {
+      console.error(
+        "❌ ImageProcessor: Failed to initialize components:",
+        error
+      );
+      this.showCriticalError("Failed to initialize application components");
+    }
+  }
+
+  setupEventHandlers() {
+    // Authentication events
+    document.addEventListener("auth:loginSuccess", async (e) => {
+      await this.handleSuccessfulAuth(e.detail.userInfo);
+    });
+
+    // Queue events
+    document.addEventListener("queue:updated", (e) => {
+      this.updateProcessButtonVisibility();
+    });
+
+    // File upload events
+    document.addEventListener("files:selected", (e) => {
+      if (this.components.uploadQueue) {
+        this.components.uploadQueue.addFiles(e.detail.files);
+      }
+    });
+
+    // Translation request events
+    document.addEventListener("result:retranslateRequest", async (e) => {
+      const { item, targetLanguage, callback } = e.detail;
+      try {
+        const translationResult = await this.translateText(
+          item.processingResults.detectedText,
+          item.processingResults.detectedLanguage || "en",
+          targetLanguage,
+          item.s3Key
+        );
+        callback(translationResult);
+      } catch (error) {
+        console.error("Translation request failed:", error);
+      }
+    });
+  }
+
+  setupProcessButton() {
+    if (this.processBtn) {
+      this.processBtn.addEventListener("click", async () => {
+        this.processBtn.disabled = true;
+        await this.processQueue();
+        this.processBtn.disabled = false;
+      });
+    }
+  }
+
+  updateProcessButtonVisibility() {
+    if (this.processBtn && this.components.uploadQueue) {
+      const hasPending = this.components.uploadQueue.hasPending();
+      this.processBtn.style.display =
+        hasPending && this.isAuthenticated ? "block" : "none";
+    }
   }
 
   async checkInitialAuthState() {
+    if (!this.auth || !this.loginSection || !this.appSection) {
+      console.warn(
+        "⚠️ ImageProcessor: Auth or core sections not ready for checkInitialAuthState"
+      );
+      return;
+    }
+
     console.log("🔍 ImageProcessor: Checking initial authentication state...");
     try {
       const isAuth = await this.auth.isAuthenticated();
       if (isAuth) {
         console.log("✅ ImageProcessor: User is already authenticated");
-        await this.handleSuccessfulAuth();
-
-        // Get user information and add to UI for existing session
-        try {
-          const userInfo = await this.auth.getCurrentUser();
-          this.addUserInfoToUI(userInfo);
-          console.log(
-            "✅ ImageProcessor: User info added to UI for existing session"
-          );
-        } catch (userInfoError) {
-          console.warn(
-            "⚠️ ImageProcessor: Could not get user info for existing session:",
-            userInfoError
-          );
-        }
+        const userInfo = await this.auth.getCurrentUser();
+        await this.handleSuccessfulAuth(userInfo);
       } else {
         console.log("❌ ImageProcessor: User is not authenticated");
         this.showLoginSection();
@@ -53,9 +198,11 @@ class ImageProcessor {
     console.log("🔐 ImageProcessor: Showing login section");
     this.loginSection.style.display = "block";
     this.appSection.style.display = "none";
+    this.isAuthenticated = false;
+    this.updateProcessButtonVisibility();
   }
 
-  async handleSuccessfulAuth() {
+  async handleSuccessfulAuth(userInfo) {
     console.log("🎉 ImageProcessor: Handling successful authentication");
 
     // Store authentication state
@@ -70,9 +217,21 @@ class ImageProcessor {
     this.loginSection.style.display = "none";
     this.appSection.style.display = "block";
 
+    // Add user info to UI
+    this.addUserInfoToUI(userInfo);
+
+    // Enable components
+    if (this.components.fileUpload) this.components.fileUpload.enable();
+    if (this.components.languageSelection)
+      this.components.languageSelection.enable();
+
+    // Update process button visibility
+    this.updateProcessButtonVisibility();
+
     // Show success message
-    this.showSuccess(
-      "✅ Login successful! You can now upload images for translation."
+    this.showGlobalMessage(
+      "✅ Login successful! You can now upload images for translation.",
+      "success"
     );
 
     console.log("✅ ImageProcessor: Authentication UI updated");
@@ -89,11 +248,11 @@ class ImageProcessor {
     const userInfoDiv = document.createElement("div");
     userInfoDiv.id = "userInfo";
     userInfoDiv.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px; background: #2d3748; border: 1px solid #4a5568; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-        <div style="color: #ffffff !important; font-weight: bold;">
-          Welcome, ${userInfo.attributes.email || userInfo.username}!
+      <div class="user-info-bar">
+        <div class="user-info-welcome">
+          Welcome, ${userInfo.attributes?.email || userInfo.username}!
         </div>
-        <button id="logoutBtn" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; font-weight: bold;" onmouseover="this.style.backgroundColor='#c82333'" onmouseout="this.style.backgroundColor='#dc3545'">
+        <button id="logoutBtn" class="logout-button">
           Logout
         </button>
       </div>
@@ -101,10 +260,11 @@ class ImageProcessor {
 
     this.appSection.insertBefore(userInfoDiv, this.appSection.firstChild);
 
-    // Add logout functionality
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      this.handleLogout();
-    });
+    // Setup logout handler
+    const logoutBtn = userInfoDiv.querySelector("#logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", () => this.handleLogout());
+    }
   }
 
   async handleLogout() {
@@ -116,784 +276,73 @@ class ImageProcessor {
       // Clear application state
       this.isAuthenticated = false;
       this.s3 = null;
-      this.uploadQueue = [];
+
+      // Clear components
+      if (this.components.uploadQueue) this.components.uploadQueue.clearQueue();
+      if (this.components.results) this.components.results.clearResults();
+
+      // Disable components
+      if (this.components.fileUpload) this.components.fileUpload.disable();
+      if (this.components.languageSelection)
+        this.components.languageSelection.disable();
 
       // Remove user info from UI
       const existingUserInfo = document.getElementById("userInfo");
       if (existingUserInfo) {
         existingUserInfo.remove();
-        console.log("✅ ImageProcessor: User info removed from UI");
       }
-
-      // Clear UI state
-      this.clearUploadQueue();
-      this.clearSuccess();
-      this.clearError();
 
       // Show login section
       this.showLoginSection();
 
-      // Show success message to confirm logout
-      this.showSuccess("You have been successfully logged out.");
+      // Show success message
+      this.showGlobalMessage(
+        "You have been successfully logged out.",
+        "success"
+      );
 
       console.log("✅ ImageProcessor: Logout successful");
     } catch (error) {
       console.error("❌ ImageProcessor: Logout error:", error);
-      this.showError("Logout failed. Please try again.");
+      this.showGlobalMessage("Logout failed. Please try again.", "error");
     }
-  }
-
-  clearUploadQueue() {
-    this.uploadQueue = [];
-    this.uploadList.innerHTML = "";
-    this.processBtn.style.display = "none";
-    this.resultsDiv.style.display = "none";
-    this.resultsDiv.innerHTML = "";
-  }
-
-  setupAuth() {
-    console.log("🔐 ImageProcessor: Setting up authentication handlers...");
-
-    // Cache DOM elements
-    const loginFormContainer = document.getElementById("loginFormContainer");
-    const registerFormContainer = document.getElementById(
-      "registerFormContainer"
-    );
-    const confirmationFormContainer = document.getElementById(
-      "confirmationFormContainer"
-    );
-    const loginForm = document.getElementById("loginForm");
-    const registerForm = document.getElementById("registerForm");
-    const confirmationForm = document.getElementById("confirmationForm");
-    const goToRegisterBtn = document.getElementById("goToRegisterBtn");
-    const backToLoginFromRegister = document.getElementById(
-      "backToLoginFromRegister"
-    );
-
-    if (!loginForm || !registerForm || !confirmationForm) {
-      console.error("❌ ImageProcessor: Required form elements not found");
-      return;
-    }
-
-    // Form navigation buttons
-    goToRegisterBtn.addEventListener("click", () => {
-      loginFormContainer.style.display = "none";
-      registerFormContainer.style.display = "block";
-      confirmationFormContainer.style.display = "none";
-    });
-
-    backToLoginFromRegister.addEventListener("click", () => {
-      loginFormContainer.style.display = "block";
-      registerFormContainer.style.display = "none";
-      confirmationFormContainer.style.display = "none";
-    });
-
-    // Login form handler
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      console.log("📝 ImageProcessor: Login form submitted");
-
-      const username = document.getElementById("username").value;
-      const password = document.getElementById("password").value;
-
-      console.log("👤 ImageProcessor: Username from form:", username);
-      console.log(
-        "🔒 ImageProcessor: Password length from form:",
-        password ? password.length : 0
-      );
-
-      await this.handleLogin(
-        username,
-        password,
-        loginForm.querySelector('button[type="submit"]')
-      );
-    });
-
-    // Registration form handler
-    registerForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      console.log("📝 ImageProcessor: Registration form submitted");
-
-      const email = document.getElementById("registerEmail").value;
-      const password = document.getElementById("registerPassword").value;
-      const confirmPassword = document.getElementById("confirmPassword").value;
-
-      console.log("👤 ImageProcessor: Registration email:", email);
-      console.log(
-        "🔒 ImageProcessor: Password length:",
-        password ? password.length : 0
-      );
-
-      await this.handleRegistration(
-        email,
-        password,
-        confirmPassword,
-        registerForm.querySelector('button[type="submit"]')
-      );
-    });
-
-    // Confirmation form handler
-    confirmationForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      console.log("📝 ImageProcessor: Confirmation form submitted");
-
-      const email = document.getElementById("confirmationEmail").value;
-      const confirmationCode =
-        document.getElementById("confirmationCode").value;
-
-      await this.handleEmailConfirmation(
-        email,
-        confirmationCode,
-        confirmationForm.querySelector('button[type="submit"]')
-      );
-    });
-
-    // Resend confirmation code handler
-    document
-      .getElementById("resendCodeBtn")
-      .addEventListener("click", async () => {
-        const email = document.getElementById("confirmationEmail").value;
-        await this.handleResendConfirmationCode(email);
-      });
-
-    // Back to login handler
-    document.getElementById("backToLoginBtn").addEventListener("click", () => {
-      this.switchToLoginTab();
-    });
-
-    console.log("✅ ImageProcessor: Authentication handlers set up");
-  }
-
-  async handleLogin(username, password, submitButton) {
-    // Validate inputs
-    if (!username || !password) {
-      this.showError("Please enter both email and password");
-      return;
-    }
-
-    // Show loading state
-    const originalButtonText = submitButton.textContent;
-    submitButton.textContent = "Signing in...";
-    submitButton.disabled = true;
-
-    // Clear any previous errors
-    this.clearError();
-
-    try {
-      console.log("🚀 ImageProcessor: Attempting login...");
-      await this.auth.signIn(username, password);
-      console.log("🎉 ImageProcessor: Login successful!");
-
-      // Handle successful authentication
-      await this.handleSuccessfulAuth();
-
-      // Get user information and add to UI
-      try {
-        const userInfo = await this.auth.getCurrentUser();
-        this.addUserInfoToUI(userInfo);
-        console.log("✅ ImageProcessor: User info added to UI");
-      } catch (userInfoError) {
-        console.warn(
-          "⚠️ ImageProcessor: Could not get user info:",
-          userInfoError
-        );
-        // Continue without user info display
-      }
-
-      // Clear form
-      document.getElementById("loginForm").reset();
-
-      console.log("✅ ImageProcessor: Login process completed");
-    } catch (error) {
-      console.error("❌ ImageProcessor: Login failed:", error);
-
-      // Check if it's an unconfirmed user error
-      if (
-        error.originalError &&
-        error.originalError.code === "UserNotConfirmedException"
-      ) {
-        // Show confirmation form for unconfirmed users
-        this.showConfirmationForm(username);
-        this.showError(
-          "Please confirm your email address. We've shown the confirmation form below."
-        );
-      } else {
-        this.showError(error.message || "Login failed. Please try again.");
-      }
-    } finally {
-      // Reset button state
-      submitButton.textContent = originalButtonText;
-      submitButton.disabled = false;
-    }
-  }
-
-  async handleRegistration(email, password, confirmPassword, submitButton) {
-    // Validate inputs
-    if (!email || !password || !confirmPassword) {
-      this.showError("Please fill in all fields");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      this.showError("Passwords do not match");
-      return;
-    }
-
-    // Show loading state
-    const originalButtonText = submitButton.textContent;
-    submitButton.textContent = "Creating Account...";
-    submitButton.disabled = true;
-
-    // Clear any previous errors
-    this.clearError();
-
-    try {
-      console.log("🚀 ImageProcessor: Attempting registration...");
-      const result = await this.auth.signUp(email, password);
-      console.log("🎉 ImageProcessor: Registration successful!");
-
-      if (result.userConfirmed) {
-        // User is automatically confirmed (unlikely with email verification)
-        this.showSuccess("Account created successfully! You can now log in.");
-        this.switchToLoginTab();
-      } else {
-        // User needs to confirm email - show confirmation form
-        this.showConfirmationForm(email);
-        this.showSuccess(
-          `Account created! Please check your email (${email}) for a confirmation code.`
-        );
-      }
-
-      // Clear the registration form
-      document.getElementById("registerEmail").value = "";
-      document.getElementById("registerPassword").value = "";
-      document.getElementById("confirmPassword").value = "";
-
-      console.log("✅ ImageProcessor: Registration process completed");
-    } catch (error) {
-      console.error("❌ ImageProcessor: Registration failed:", error);
-      this.showError(error.message || "Registration failed. Please try again.");
-    } finally {
-      // Reset button state
-      submitButton.textContent = originalButtonText;
-      submitButton.disabled = false;
-    }
-  }
-
-  showConfirmationForm(email) {
-    console.log("📧 ImageProcessor: Showing confirmation form for:", email);
-
-    // Hide other forms and show confirmation form
-    document.getElementById("loginFormContainer").style.display = "none";
-    document.getElementById("registerFormContainer").style.display = "none";
-    document.getElementById("confirmationFormContainer").style.display =
-      "block";
-
-    // Pre-fill email
-    document.getElementById("confirmationEmail").value = email;
-
-    // Focus on confirmation code input
-    document.getElementById("confirmationCode").focus();
-  }
-
-  async handleEmailConfirmation(email, confirmationCode, submitButton) {
-    // Validate inputs
-    if (!email || !confirmationCode) {
-      this.showError("Please enter the confirmation code");
-      return;
-    }
-
-    if (confirmationCode.length !== 6 || !/^\d{6}$/.test(confirmationCode)) {
-      this.showError("Confirmation code must be 6 digits");
-      return;
-    }
-
-    // Show loading state
-    const originalButtonText = submitButton.textContent;
-    submitButton.textContent = "Confirming...";
-    submitButton.disabled = true;
-
-    // Clear any previous errors
-    this.clearError();
-
-    try {
-      console.log("🚀 ImageProcessor: Attempting email confirmation...");
-      await this.auth.confirmSignUp(email, confirmationCode);
-      console.log("🎉 ImageProcessor: Email confirmation successful!");
-
-      // Show success message and switch to login
-      this.showSuccess("Email confirmed successfully! You can now log in.");
-      this.switchToLoginTab();
-
-      // Clear the confirmation form
-      document.getElementById("confirmationCode").value = "";
-
-      console.log("✅ ImageProcessor: Confirmation process completed");
-    } catch (error) {
-      console.error("❌ ImageProcessor: Confirmation failed:", error);
-      this.showError(error.message || "Confirmation failed. Please try again.");
-    } finally {
-      // Reset button state
-      submitButton.textContent = originalButtonText;
-      submitButton.disabled = false;
-    }
-  }
-
-  async handleResendConfirmationCode(email) {
-    const resendBtn = document.getElementById("resendCodeBtn");
-    const originalText = resendBtn.textContent;
-
-    try {
-      resendBtn.textContent = "Sending...";
-      resendBtn.disabled = true;
-
-      console.log("📧 ImageProcessor: Resending confirmation code...");
-      await this.auth.resendConfirmationCode(email);
-
-      this.showSuccess("Confirmation code sent! Please check your email.");
-
-      // Start countdown
-      let countdown = 60;
-      const countdownInterval = setInterval(() => {
-        resendBtn.textContent = `Resend Code (${countdown}s)`;
-        countdown--;
-
-        if (countdown < 0) {
-          clearInterval(countdownInterval);
-          resendBtn.textContent = originalText;
-          resendBtn.disabled = false;
-        }
-      }, 1000);
-    } catch (error) {
-      console.error(
-        "❌ ImageProcessor: Failed to resend confirmation code:",
-        error
-      );
-      this.showError("Failed to send confirmation code. Please try again.");
-      resendBtn.textContent = originalText;
-      resendBtn.disabled = false;
-    }
-  }
-
-  switchToLoginTab() {
-    // Show login form, hide others
-    document.getElementById("loginFormContainer").style.display = "block";
-    document.getElementById("registerFormContainer").style.display = "none";
-    document.getElementById("confirmationFormContainer").style.display = "none";
-  }
-
-  showError(message) {
-    console.error("🚨 ImageProcessor: Showing error:", message);
-
-    // Remove existing error
-    this.clearError();
-
-    // Create error element
-    const errorDiv = document.createElement("div");
-    errorDiv.id = "loginError";
-    errorDiv.style.cssText = `
-      background: #f8d7da;
-      color: #721c24;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 16px;
-      border: 1px solid #f5c6cb;
-    `;
-    errorDiv.textContent = message;
-
-    // Insert error before the form
-    const loginForm = document.getElementById("loginForm");
-    loginForm.parentNode.insertBefore(errorDiv, loginForm);
-  }
-
-  clearError() {
-    const existingError = document.getElementById("loginError");
-    if (existingError) {
-      existingError.remove();
-    }
-  }
-
-  showSuccess(message) {
-    console.log("🎉 ImageProcessor: Showing success:", message);
-
-    // Remove existing messages
-    this.clearError();
-    this.clearSuccess();
-
-    // Create success element
-    const successDiv = document.createElement("div");
-    successDiv.id = "loginSuccess";
-    successDiv.style.cssText = `
-      background: #d4edda;
-      color: #155724;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 16px;
-      border: 1px solid #c3e6cb;
-    `;
-    successDiv.textContent = message;
-
-    // Insert in the most appropriate location based on current view
-    if (this.loginSection.style.display !== "none") {
-      // If login section is visible, insert before it
-      this.loginSection.parentNode.insertBefore(successDiv, this.loginSection);
-    } else {
-      // If app section is visible, insert before it
-      this.appSection.parentNode.insertBefore(successDiv, this.appSection);
-    }
-
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      this.clearSuccess();
-    }, 5000);
-  }
-
-  clearSuccess() {
-    const existingSuccess = document.getElementById("loginSuccess");
-    if (existingSuccess) {
-      existingSuccess.remove();
-    }
-  }
-
-  setupUI() {
-    // Cache DOM elements for performance
-    this.loginSection = document.getElementById("loginSection");
-    this.appSection = document.getElementById("appSection");
-    this.dropZone = document.getElementById("dropZone");
-    this.fileInput = document.getElementById("fileInput");
-    this.uploadList = document.getElementById("uploadList");
-    this.processBtn = document.getElementById("processBtn");
-    this.resultsDiv = document.getElementById("results");
-    this.targetLanguageSelect = document.getElementById("targetLanguage");
-
-    // Setup event listeners
-    this.setupDragAndDrop();
-    this.setupFileInput();
-    this.setupProcessButton();
-    this.setupLanguageSelection();
-  }
-
-  setupDragAndDrop() {
-    this.dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      this.dropZone.classList.add("drag-over");
-    });
-
-    this.dropZone.addEventListener("dragleave", () => {
-      this.dropZone.classList.remove("drag-over");
-    });
-
-    this.dropZone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      this.dropZone.classList.remove("drag-over");
-      this.handleFiles(e.dataTransfer.files);
-    });
-
-    this.dropZone.addEventListener("click", () => {
-      this.fileInput.click();
-    });
-  }
-
-  setupFileInput() {
-    this.fileInput.addEventListener("change", (e) => {
-      this.handleFiles(e.target.files);
-    });
-  }
-
-  setupProcessButton() {
-    this.processBtn.addEventListener("click", async () => {
-      this.processBtn.disabled = true;
-      await this.processQueue();
-      this.resultsDiv.style.display = "block";
-    });
-  }
-
-  setupLanguageSelection() {
-    if (this.targetLanguageSelect) {
-      this.targetLanguageSelect.addEventListener("change", async (e) => {
-        const selectedLanguage = e.target.value;
-        console.log(
-          `🌍 ImageProcessor: Language changed to: ${selectedLanguage}`
-        );
-
-        // Re-translate all existing results
-        console.log(
-          "🔄 ImageProcessor: Re-translating all results to:",
-          selectedLanguage
-        );
-        await this.retranslateAllResults(selectedLanguage);
-      });
-    }
-  }
-
-  handleFiles(files) {
-    for (const file of files) {
-      if (file.type.startsWith("image/")) {
-        this.addToUploadQueue(file);
-      }
-    }
-    if (this.uploadQueue.length > 0) {
-      this.processBtn.style.display = "block";
-    }
-  }
-
-  addToUploadQueue(file) {
-    const item = {
-      file,
-      id: `upload-${Date.now()}-${crypto.randomUUID()}`,
-      status: "pending",
-    };
-
-    this.uploadQueue.push(item);
-    this.createUploadListItem(item);
-  }
-
-  createUploadListItem(item) {
-    const li = document.createElement("li");
-    li.className = "upload-item";
-    li.id = item.id;
-
-    // Create thumbnail
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target.result;
-      const imageSrc = typeof result === "string" ? result : "";
-      li.innerHTML = `
-        <img src="${imageSrc}" alt="${item.file.name}">
-        <div class="details">
-          <div>${item.file.name}</div>
-          <div class="progress">
-            <div class="progress-bar" style="width: 0%"></div>
-          </div>
-        </div>
-        <div class="status">Pending</div>
-      `;
-    };
-    reader.readAsDataURL(item.file);
-
-    this.uploadList.appendChild(li);
-  }
-
-  async retranslateAllResults(targetLanguage) {
-    console.log("📝 ImageProcessor: Starting re-translation process...");
-
-    // Find all completed items that have processing results
-    const completedItems = this.uploadQueue.filter(
-      (item) => item.status === "complete" && item.processingResults
-    );
-
-    if (completedItems.length === 0) {
-      console.log("📝 ImageProcessor: No processed items to re-translate");
-      return;
-    }
-
-    console.log(
-      `📝 ImageProcessor: Re-translating ${completedItems.length} items`
-    );
-
-    // Re-translate each item
-    for (const item of completedItems) {
-      await this.retranslateItem(item, targetLanguage);
-    }
-  }
-
-  async retranslateItem(item, targetLanguage) {
-    if (!item.processingResults || !item.processingResults.detectedText) {
-      console.log(
-        `📝 ImageProcessor: No detected text to translate for ${item.file.name}`
-      );
-      return;
-    }
-
-    try {
-      console.log(
-        `🔄 ImageProcessor: Re-translating ${item.file.name} to ${targetLanguage}`
-      );
-
-      const requestBody = {
-        bucket: AWS_CONFIG.bucketName,
-        key: item.s3Key,
-        targetLanguage: targetLanguage,
-        detectedText: item.processingResults.detectedText,
-        detectedLanguage: item.processingResults.detectedLanguage || "en",
-      };
-
-      console.log(`📤 ImageProcessor: Request body:`, requestBody);
-
-      // Call the existing /process endpoint with detected text and language
-      const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/process`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      console.log(`📥 ImageProcessor: Response status: ${response.status}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ ImageProcessor: Response error:`, errorText);
-        throw new Error(
-          `Translation failed: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const translationResult = await response.json();
-      console.log("✅ ImageProcessor: Translation result:", translationResult);
-
-      // Update the item's processing results
-      item.processingResults.translatedText = translationResult.translatedText;
-      item.processingResults.targetLanguage = targetLanguage;
-
-      // Update the UI
-      this.updateResultDisplay(item);
-    } catch (error) {
-      console.error(
-        `❌ ImageProcessor: Translation error for ${item.file.name}:`,
-        error
-      );
-      // Show error to user
-      this.showError(`Translation failed: ${error.message}`);
-    }
-  }
-
-  updateResultDisplay(item) {
-    // Find the existing result element and update only the translation section
-    const resultElements = this.resultsDiv.querySelectorAll(".result-item");
-    for (const resultElement of resultElements) {
-      const title = resultElement.querySelector("h3");
-      if (title && title.textContent === item.file.name) {
-        // Find and update only the translation section
-        this.updateTranslationSection(resultElement, item);
-        break;
-      }
-    }
-  }
-
-  updateTranslationSection(resultElement, item) {
-    if (!item.processingResults) return;
-
-    const results =
-      typeof item.processingResults === "string"
-        ? JSON.parse(item.processingResults)
-        : item.processingResults;
-
-    // Find existing translation section
-    const existingTranslationDiv = resultElement.querySelector(
-      '[data-section="translation"]'
-    );
-
-    if (
-      results.translatedText &&
-      results.translatedText !== results.detectedText
-    ) {
-      const targetLang =
-        results.targetLanguage || this.targetLanguageSelect?.value || "en";
-      const targetLangName = this.getLanguageName(targetLang);
-
-      const translationHTML = `
-        <div data-section="translation" style="margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; margin-bottom: 6px;">
-            <span style="font-weight: 600; color: #FFB74D;">🔄 Translation (${targetLangName}):</span>
-          </div>
-          <div style="background: #2d3748; padding: 12px; border-radius: 6px; border-left: 3px solid #FFB74D; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4;">
-            ${results.translatedText}
-          </div>
-        </div>
-      `;
-
-      if (existingTranslationDiv) {
-        // Replace existing translation section
-        existingTranslationDiv.outerHTML = translationHTML;
-      } else {
-        // Add new translation section after detected language
-        const detectedLanguageDiv = resultElement.querySelector(
-          '[data-section="detected-language"]'
-        );
-        if (detectedLanguageDiv) {
-          detectedLanguageDiv.insertAdjacentHTML("afterend", translationHTML);
-        }
-      }
-    } else if (existingTranslationDiv) {
-      // Remove translation section if no translation needed
-      existingTranslationDiv.remove();
-    }
-  }
-
-  getLanguageName(languageCode) {
-    const languageMap = {
-      en: "English",
-      es: "Spanish",
-      fr: "French",
-      de: "German",
-      it: "Italian",
-      pt: "Portuguese",
-      ru: "Russian",
-      ja: "Japanese",
-      ko: "Korean",
-      zh: "Chinese (Simplified)",
-      "zh-TW": "Chinese (Traditional)",
-      ar: "Arabic",
-      hi: "Hindi",
-      th: "Thai",
-      vi: "Vietnamese",
-      nl: "Dutch",
-      pl: "Polish",
-      tr: "Turkish",
-      sv: "Swedish",
-      da: "Danish",
-      no: "Norwegian",
-      fi: "Finnish",
-      cs: "Czech",
-      hu: "Hungarian",
-      ro: "Romanian",
-      bg: "Bulgarian",
-      hr: "Croatian",
-      sk: "Slovak",
-      sl: "Slovenian",
-      et: "Estonian",
-      lv: "Latvian",
-      lt: "Lithuanian",
-      mt: "Maltese",
-      ga: "Irish",
-      cy: "Welsh",
-    };
-    return languageMap[languageCode] || languageCode;
   }
 
   async processQueue() {
-    for (const item of this.uploadQueue) {
-      if (item.status === "pending") {
-        await this.uploadAndProcess(item);
-      }
+    if (!this.isAuthenticated || !this.s3) {
+      console.error("❌ ImageProcessor: Not authenticated for processing");
+      this.showGlobalMessage(
+        "Authentication error. Please log in again.",
+        "error"
+      );
+      return;
+    }
+
+    const pendingItems = this.components.uploadQueue.getPendingItems();
+    if (pendingItems.length === 0) {
+      console.log("📝 ImageProcessor: No pending items to process");
+      return;
+    }
+
+    console.log(`🚀 ImageProcessor: Processing ${pendingItems.length} items`);
+
+    for (const item of pendingItems) {
+      await this.uploadAndProcess(item);
     }
   }
 
   async uploadAndProcess(item) {
-    // Check authentication before processing
-    if (!this.isAuthenticated || !this.s3) {
-      console.error("❌ ImageProcessor: Not authenticated for upload");
-      const li = document.getElementById(item.id);
-      const statusDiv = li.querySelector(".status");
-      statusDiv.textContent = "Authentication Error";
-      item.status = "error";
-      return;
-    }
-
-    const li = document.getElementById(item.id);
-    const statusDiv = li.querySelector(".status");
-    const progressBar = li.querySelector(".progress-bar");
-
     try {
-      // Update status to uploading
-      statusDiv.textContent = "Uploading...";
-      console.log(`📤 ImageProcessor: Uploading ${item.file.name} to S3...`);
+      console.log(`📤 ImageProcessor: Processing ${item.file.name}`);
 
-      // Upload to S3 with proper error handling
-      const params = {
+      // Update status to uploading
+      this.components.uploadQueue.updateItemStatus(item.id, "uploading", 0);
+
+      // Upload to S3
+      const s3Key = `uploads/${Date.now()}-${item.file.name}`;
+      const uploadParams = {
         Bucket: AWS_CONFIG.bucketName,
-        Key: `uploads/${Date.now()}-${item.file.name}`, // Add timestamp to avoid conflicts
+        Key: s3Key,
         Body: item.file,
         ContentType: item.file.type,
         Metadata: {
@@ -902,21 +351,15 @@ class ImageProcessor {
         },
       };
 
-      console.log("📋 ImageProcessor: Upload parameters:", {
-        Bucket: params.Bucket,
-        Key: params.Key,
-        ContentType: params.ContentType,
-      });
+      const upload = this.s3.upload(uploadParams);
 
-      const upload = this.s3.upload(params);
-
+      // Track upload progress
       upload.on("httpUploadProgress", (progress) => {
-        const percentage = ((progress.loaded / progress.total) * 100).toFixed(
-          0
-        );
-        progressBar.style.width = `${percentage}%`;
-        console.log(
-          `📊 ImageProcessor: Upload progress for ${item.file.name}: ${percentage}%`
+        const percentage = Math.round((progress.loaded / progress.total) * 100);
+        this.components.uploadQueue.updateItemStatus(
+          item.id,
+          "uploading",
+          percentage
         );
       });
 
@@ -924,17 +367,18 @@ class ImageProcessor {
       console.log("✅ ImageProcessor: Upload successful:", uploadResult);
 
       // Update status to processing
-      statusDiv.textContent = "Processing...";
-      progressBar.style.width = "100%";
+      this.components.uploadQueue.updateItemStatus(item.id, "processing", 100);
 
-      // Call Lambda function to process the image
-      await this.callLambdaProcessor(params.Key, item);
+      // Process the image
+      const processingResult = await this.processImage(s3Key);
+
+      // Update item with results
+      item.s3Key = s3Key;
+      item.s3Location = uploadResult.Location;
+      item.processingResults = processingResult;
 
       // Update status to complete
-      statusDiv.textContent = "Complete";
-      item.status = "complete";
-      item.s3Key = params.Key;
-      item.s3Location = uploadResult.Location;
+      this.components.uploadQueue.updateItemStatus(item.id, "complete");
 
       console.log(
         `🎉 ImageProcessor: Successfully processed ${item.file.name}`
@@ -944,183 +388,117 @@ class ImageProcessor {
         `❌ ImageProcessor: Error processing ${item.file.name}:`,
         error
       );
-      statusDiv.textContent = "Error";
-      item.status = "error";
-      item.error = error.message;
-
-      // Show user-friendly error message
-      this.showUploadError(item, error);
+      this.components.uploadQueue.updateItemStatus(
+        item.id,
+        "error",
+        null,
+        error.message
+      );
     }
   }
 
-  async callLambdaProcessor(s3Key, item) {
-    console.log(`🚀 ImageProcessor: Calling Lambda to process ${s3Key}`);
+  async processImage(s3Key) {
+    console.log(`🚀 ImageProcessor: Processing image ${s3Key}`);
 
-    try {
-      // Get the selected target language
-      const targetLanguage = this.targetLanguageSelect
-        ? this.targetLanguageSelect.value
-        : "en";
+    const targetLanguage =
+      this.components.languageSelection.getSelectedLanguage();
 
-      // Call the API Gateway endpoint
-      const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/process`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          bucket: AWS_CONFIG.bucketName,
-          key: s3Key,
-          targetLanguage: targetLanguage,
-        }),
-      });
+    const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/process`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        bucket: AWS_CONFIG.bucketName,
+        key: s3Key,
+        targetLanguage: targetLanguage,
+      }),
+    });
 
-      if (!response.ok) {
-        // Get the actual error response
-        let errorMessage = `Lambda processing failed: ${response.status} ${response.statusText}`;
-        try {
-          const errorBody = await response.text();
-          console.error("❌ ImageProcessor: Lambda error response:", errorBody);
-          errorMessage += ` - ${errorBody}`;
-        } catch (e) {
-          console.error(
-            "❌ ImageProcessor: Could not read error response body"
-          );
-        }
-        throw new Error(errorMessage);
+    if (!response.ok) {
+      let errorMessage = `Processing failed: ${response.status} ${response.statusText}`;
+      try {
+        const errorBody = await response.text();
+        errorMessage += ` - ${errorBody}`;
+      } catch (e) {
+        console.warn("Failed to read error response body:", e);
+        errorMessage += " - Could not read error details";
       }
-
-      const result = await response.json();
-      console.log("✅ ImageProcessor: Lambda processing result:", result);
-
-      // Store the processing results
-      item.processingResults = result;
-
-      // Show results in UI
-      this.showResults(item);
-
-      return result;
-    } catch (error) {
-      console.error("❌ ImageProcessor: Lambda processing error:", error);
-      throw error;
+      throw new Error(errorMessage);
     }
+
+    return await response.json();
   }
 
-  showUploadError(item, error) {
-    const errorDiv = document.createElement("div");
-    errorDiv.style.cssText = `
-      background: #f8d7da;
-      color: #721c24;
-      padding: 8px;
-      border-radius: 4px;
-      margin-top: 8px;
-      font-size: 12px;
-    `;
-    errorDiv.textContent = `Error: ${error.message}`;
+  async translateText(text, sourceLanguage, targetLanguage, s3Key) {
+    console.log(`🔄 ImageProcessor: Translating text to ${targetLanguage}`);
 
-    const li = document.getElementById(item.id);
-    li.appendChild(errorDiv);
+    const response = await fetch(`${AWS_CONFIG.apiGatewayUrl}/process`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        bucket: AWS_CONFIG.bucketName,
+        key: s3Key,
+        targetLanguage: targetLanguage,
+        detectedText: text,
+        detectedLanguage: sourceLanguage,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Translation failed: ${response.status} ${response.statusText}`
+      );
+    }
+
+    return await response.json();
   }
 
-  showResults(item) {
-    console.log(`📊 ImageProcessor: Showing results for ${item.file.name}`);
+  showGlobalMessage(message, type = "info", duration = 5000) {
+    // Remove existing global messages
+    const existingMessages = document.querySelectorAll(".global-message");
+    existingMessages.forEach((msg) => msg.remove());
 
-    const result = document.createElement("div");
-    result.className = "result-item";
-    result.style.cssText = `
-      background: #4a5568;
-      color: white;
-      border: 1px solid #718096;
-      padding: 20px;
-      margin-bottom: 16px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: left;
-    `;
+    // Create message element
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `global-message global-message-${type}`;
+    messageDiv.textContent = message;
 
-    let resultHTML = `
-      <div style="display: flex; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #718096;">
-        <h3 style="margin: 0; color: #ffffff; font-size: 1.2rem; font-weight: 600;">${item.file.name}</h3>
-      </div>
-    `;
-
-    if (item.processingResults) {
-      const results =
-        typeof item.processingResults === "string"
-          ? JSON.parse(item.processingResults)
-          : item.processingResults;
-
-      if (results.detectedText) {
-        resultHTML += `
-          <div style="margin-bottom: 16px;">
-            <div style="display: flex; align-items: center; margin-bottom: 6px;">
-              <span style="font-weight: 600; color: #81C784;">🔍 Detected Text:</span>
-            </div>
-            <div style="background: #2d3748; padding: 12px; border-radius: 6px; border-left: 3px solid #81C784; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4;">
-              ${results.detectedText || "No text detected"}
-            </div>
-          </div>
-        `;
-      }
-
-      if (results.detectedLanguage) {
-        const detectedLangName = this.getLanguageName(results.detectedLanguage);
-        resultHTML += `
-          <div data-section="detected-language" style="margin-bottom: 16px;">
-            <span style="font-weight: 600; color: #64B5F6;">🌍 Detected Language:</span>
-            <span style="background: #1976D2; color: white; padding: 4px 12px; border-radius: 16px; margin-left: 8px; font-size: 0.9rem; font-weight: 500;">
-              ${detectedLangName}
-            </span>
-          </div>
-        `;
-      }
-
-      if (
-        results.translatedText &&
-        results.translatedText !== results.detectedText
-      ) {
-        const targetLang =
-          results.targetLanguage || this.targetLanguageSelect?.value || "en";
-        const targetLangName = this.getLanguageName(targetLang);
-        resultHTML += `
-          <div data-section="translation" style="margin-bottom: 16px;">
-            <div style="display: flex; align-items: center; margin-bottom: 6px;">
-              <span style="font-weight: 600; color: #FFB74D;">🔄 Translation (${targetLangName}):</span>
-            </div>
-            <div style="background: #2d3748; padding: 12px; border-radius: 6px; border-left: 3px solid #FFB74D; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.4;">
-              ${results.translatedText}
-            </div>
-          </div>
-        `;
-      }
-
-      if (results.bucket && results.key) {
-        resultHTML += `
-          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #718096;">
-            <span style="font-size: 0.85rem; color: #A0AEC0; font-family: 'Courier New', monospace;">
-              📁 S3 Location: s3://${results.bucket}/${results.key}
-            </span>
-          </div>
-        `;
-      }
+    // Insert at top of page
+    const container = document.querySelector(".container");
+    if (container) {
+      container.insertBefore(messageDiv, container.firstChild);
     } else {
-      resultHTML += `
-        <div style="text-align: center; padding: 20px; color: #A0AEC0; font-style: italic;">
-          Processing completed but no detailed results available.
-        </div>
-      `;
+      document.body.insertBefore(messageDiv, document.body.firstChild);
     }
 
-    if (item.error) {
-      resultHTML += `
-        <div style="background: #E53E3E; color: white; padding: 12px; border-radius: 6px; margin-top: 12px; border-left: 3px solid #C53030;">
-          ❌ Error: ${item.error}
-        </div>
-      `;
+    // Auto-hide after duration
+    if (duration > 0) {
+      setTimeout(() => {
+        if (messageDiv.parentNode) {
+          messageDiv.remove();
+        }
+      }, duration);
+    }
+  }
+
+  showCriticalError(message) {
+    const body = document.body;
+    const errorDiv = document.createElement("div");
+    errorDiv.className = "critical-error";
+    errorDiv.innerHTML = `<p>${message}</p>`;
+
+    if (body.firstChild) {
+      body.insertBefore(errorDiv, body.firstChild);
+    } else {
+      body.appendChild(errorDiv);
     }
 
-    result.innerHTML = resultHTML;
-    this.resultsDiv.appendChild(result);
+    // Hide other major sections
+    if (this.loginSection) this.loginSection.style.display = "none";
+    if (this.appSection) this.appSection.style.display = "none";
   }
 }
 
