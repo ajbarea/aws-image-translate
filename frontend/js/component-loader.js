@@ -33,7 +33,6 @@ document.addEventListener("DOMContentLoaded", () => {
     },
     { name: "file-upload", placeholderId: "file-upload-placeholder" },
     { name: "upload-list", placeholderId: "upload-list-placeholder" },
-    { name: "results", placeholderId: "results-placeholder" },
   ];
 
   const loadPromises = componentsToLoad.map((comp) =>

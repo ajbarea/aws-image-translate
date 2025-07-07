@@ -33,6 +33,7 @@ class ImageProcessor {
     this.loginSection = null;
     this.appSection = null;
     this.processBtn = null;
+    this.clearAllBtn = null;
 
     console.log(
       "✅ ImageProcessor: Application structure initialized. Waiting for components."
@@ -66,6 +67,7 @@ class ImageProcessor {
       this.loginSection = document.getElementById("loginSection");
       this.appSection = document.getElementById("appSection");
       this.processBtn = document.getElementById("processBtn");
+      this.clearAllBtn = document.getElementById("clearAllBtn");
 
       if (!this.loginSection || !this.appSection) {
         throw new Error("Critical UI sections not found");
@@ -127,6 +129,11 @@ class ImageProcessor {
       this.updateProcessButtonVisibility();
     });
 
+    // Results events
+    document.addEventListener("result:removed", (e) => {
+      this.updateProcessButtonVisibility();
+    });
+
     // File upload events
     document.addEventListener("files:selected", (e) => {
       if (this.components.uploadQueue) {
@@ -159,6 +166,12 @@ class ImageProcessor {
         this.processBtn.disabled = false;
       });
     }
+
+    if (this.clearAllBtn) {
+      this.clearAllBtn.addEventListener("click", () => {
+        this.clearAllData();
+      });
+    }
   }
 
   updateProcessButtonVisibility() {
@@ -166,6 +179,15 @@ class ImageProcessor {
       const hasPending = this.components.uploadQueue.hasPending();
       this.processBtn.style.display =
         hasPending && this.isAuthenticated ? "block" : "none";
+    }
+
+    // Show clear button if there are uploads or results
+    if (this.clearAllBtn && this.isAuthenticated) {
+      const hasUploads =
+        this.components.uploadQueue && !this.components.uploadQueue.isEmpty();
+      const hasResults = this.components.results?.hasResults();
+      this.clearAllBtn.style.display =
+        hasUploads || hasResults ? "block" : "none";
     }
   }
 
@@ -499,6 +521,25 @@ class ImageProcessor {
     // Hide other major sections
     if (this.loginSection) this.loginSection.style.display = "none";
     if (this.appSection) this.appSection.style.display = "none";
+  }
+
+  clearAllData() {
+    console.log("🗑️ ImageProcessor: Clearing all data");
+
+    // Clear upload queue
+    if (this.components.uploadQueue) {
+      this.components.uploadQueue.clearQueue();
+    }
+
+    // Clear results
+    if (this.components.results) {
+      this.components.results.clearResults();
+    }
+
+    // Update button visibility
+    this.updateProcessButtonVisibility();
+
+    console.log("✅ ImageProcessor: All data cleared");
   }
 }
 

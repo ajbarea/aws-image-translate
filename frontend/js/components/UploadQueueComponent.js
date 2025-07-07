@@ -18,7 +18,7 @@ export class UploadQueueComponent extends BaseComponent {
   }
 
   setupEventListeners() {
-    // Listen for remove button clicks
+    // Listen for remove button clicks and image preview clicks
     this.addEventListener(
       this.container,
       "click",
@@ -30,6 +30,16 @@ export class UploadQueueComponent extends BaseComponent {
     if (e.target.matches(".remove-file-btn")) {
       const itemId = e.target.dataset.itemId;
       this.removeFromQueue(itemId);
+    } else if (
+      e.target.matches(".upload-image-preview") ||
+      e.target.closest(".upload-image-preview")
+    ) {
+      const button = e.target.closest(".upload-image-preview") || e.target;
+      const imageUrl = button.dataset.imageUrl;
+      const imageName = button.dataset.imageName;
+      if (imageUrl && imageName) {
+        this.openImageModal(imageUrl, imageName);
+      }
     }
   }
 
@@ -82,9 +92,11 @@ export class UploadQueueComponent extends BaseComponent {
 
     // Create placeholder content first
     li.innerHTML = `
-      <div class="upload-item-image">
+      <button class="upload-item-image upload-image-preview" data-image-url="" data-image-name="${this.escapeHtml(
+        item.file.name
+      )}" title="View image">
         <div class="image-placeholder">Loading...</div>
-      </div>
+      </button>
       <div class="upload-item-details">
         <div class="upload-item-name">${item.file.name}</div>
         <div class="upload-item-size">${this.formatFileSize(
@@ -108,6 +120,7 @@ export class UploadQueueComponent extends BaseComponent {
         const imageContainer = li.querySelector(".upload-item-image");
         if (imageContainer && thumbnailSrc) {
           imageContainer.innerHTML = `<img src="${thumbnailSrc}" alt="${item.file.name}">`;
+          imageContainer.dataset.imageUrl = thumbnailSrc;
         }
       })
       .catch((error) => {
@@ -224,6 +237,10 @@ export class UploadQueueComponent extends BaseComponent {
     return this.uploadQueue.filter((item) => item.status === "error");
   }
 
+  hasPending() {
+    return this.uploadQueue.some((item) => item.status === "pending");
+  }
+
   clearQueue() {
     this.uploadQueue = [];
     this.uploadList.innerHTML = "";
@@ -241,11 +258,71 @@ export class UploadQueueComponent extends BaseComponent {
     return this.uploadQueue.length === 0;
   }
 
-  hasError() {
-    return this.uploadQueue.some((item) => item.status === "error");
+  openImageModal(imageUrl, imageName) {
+    // Remove existing modal if present
+    this.closeImageModal();
+
+    // Create modal backdrop
+    const modalBackdrop = document.createElement("div");
+    modalBackdrop.className = "image-modal-backdrop";
+    modalBackdrop.id = "imageModal";
+
+    // Create modal content
+    modalBackdrop.innerHTML = `
+      <div class="image-modal-content">
+        <div class="image-modal-header">
+          <h3 class="image-modal-title">${this.escapeHtml(imageName)}</h3>
+          <button class="image-modal-close" title="Close">&times;</button>
+        </div>
+        <div class="image-modal-body">
+          <img src="${imageUrl}" alt="${this.escapeHtml(
+      imageName
+    )}" class="image-modal-img" />
+        </div>
+      </div>
+    `;
+
+    // Add to document
+    document.body.appendChild(modalBackdrop);
+
+    // Add event listeners
+    const closeBtn = modalBackdrop.querySelector(".image-modal-close");
+    closeBtn.addEventListener("click", () => this.closeImageModal());
+
+    // Close on backdrop click
+    modalBackdrop.addEventListener("click", (e) => {
+      if (e.target === modalBackdrop) {
+        this.closeImageModal();
+      }
+    });
+
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        this.closeImageModal();
+        document.removeEventListener("keydown", handleEscape);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+
+    // Store escape handler for cleanup
+    modalBackdrop._escapeHandler = handleEscape;
   }
 
-  hasPending() {
-    return this.uploadQueue.some((item) => item.status === "pending");
+  closeImageModal() {
+    const modal = document.getElementById("imageModal");
+    if (modal) {
+      // Clean up escape key listener
+      if (modal._escapeHandler) {
+        document.removeEventListener("keydown", modal._escapeHandler);
+      }
+      modal.remove();
+    }
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
   }
 }

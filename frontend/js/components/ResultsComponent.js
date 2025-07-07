@@ -7,42 +7,79 @@ export class ResultsComponent extends BaseComponent {
   constructor(containerId, options = {}) {
     super(containerId, options);
     this.results = [];
+    this.noTextResults = [];
   }
 
   async onInit() {
-    this.resultsContainer = this.querySelector("#results");
+    this.resultsContainer = this.container;
     if (!this.resultsContainer) {
       throw new Error("Results container not found");
     }
+
+    this.resultsContainer.id = "results";
+    this.resultsContainer.classList.add("hidden");
+
+    this.resultsContainer.innerHTML = `
+      <div id="successful-results" class="results-section"></div>
+      <div id="no-text-results" class="results-section hidden">
+        <h3 class="no-text-title">📷 Images with No Text Detected</h3>
+        <p class="no-text-description">The following images were processed but no text was found:</p>
+        <div class="no-text-list"></div>
+      </div>
+    `;
+
+    this.successfulResultsContainer = this.resultsContainer.querySelector(
+      "#successful-results"
+    );
+    this.noTextResultsContainer =
+      this.resultsContainer.querySelector("#no-text-results");
+    this.noTextList = this.resultsContainer.querySelector(".no-text-list");
   }
 
   setupEventListeners() {
-    // Listen for queue item updates to show results
     this.on("queue:itemUpdated", this.handleQueueItemUpdated.bind(this));
-
-    // Listen for language changes to retranslate results
     this.on("language:changed", this.handleLanguageChanged.bind(this));
-
-    // Listen for remove button clicks
     this.addEventListener(
       this.container,
       "click",
-      this.handleRemoveButtonClick.bind(this)
+      this.handleButtonClick.bind(this)
     );
   }
 
-  handleRemoveButtonClick(e) {
+  handleButtonClick(e) {
     if (e.target.matches(".result-remove-btn")) {
       const itemId = e.target.dataset.itemId;
       this.removeResult(itemId);
       this.emit("result:removed", { itemId });
+    } else if (e.target.matches(".no-text-remove-btn")) {
+      const itemId = e.target.dataset.itemId;
+      this.removeNoTextResult(itemId);
+      this.updateContainerVisibility();
+      this.emit("result:removed", { itemId });
+    } else if (
+      e.target.matches(".upload-image-preview") ||
+      e.target.closest(".upload-image-preview")
+    ) {
+      const button = e.target.closest(".upload-image-preview") || e.target;
+      const imageUrl = button.dataset.imageUrl;
+      const imageName = button.dataset.imageName;
+      this.openImageModal(imageUrl, imageName);
     }
   }
 
   handleQueueItemUpdated(e) {
     const { item } = e.detail;
     if (item.status === "complete" && item.processingResults) {
-      this.addResult(item);
+      const results =
+        typeof item.processingResults === "string"
+          ? JSON.parse(item.processingResults)
+          : item.processingResults;
+
+      if (results.detectedText && results.detectedText.trim()) {
+        this.addResult(item);
+      } else {
+        this.addNoTextResult(item);
+      }
     }
   }
 
@@ -55,21 +92,36 @@ export class ResultsComponent extends BaseComponent {
   addResult(item) {
     console.log(`📊 Results: Adding result for ${item.file.name}`);
 
-    // Remove existing result for this item if it exists
     this.removeResult(item.id);
 
     const resultElement = this.createResultElement(item);
-    this.resultsContainer.appendChild(resultElement);
+    this.successfulResultsContainer.appendChild(resultElement);
 
-    // Store result reference
     this.results.push({
       id: item.id,
       item,
       element: resultElement,
     });
 
-    // Show the results container
     this.resultsContainer.classList.remove("hidden");
+  }
+
+  addNoTextResult(item) {
+    console.log(`📊 Results: Adding no-text result for ${item.file.name}`);
+
+    this.removeNoTextResult(item.id);
+
+    const noTextElement = this.createNoTextElement(item);
+    this.noTextList.appendChild(noTextElement);
+
+    this.noTextResults.push({
+      id: item.id,
+      item,
+      element: noTextElement,
+    });
+
+    this.resultsContainer.classList.remove("hidden");
+    this.noTextResultsContainer.classList.remove("hidden");
   }
 
   removeResult(itemId) {
@@ -78,27 +130,79 @@ export class ResultsComponent extends BaseComponent {
     );
     if (resultIndex !== -1) {
       const result = this.results[resultIndex];
+
+      const imagePreview = result.element?.querySelector(
+        ".upload-image-preview"
+      );
+      if (imagePreview?.dataset.imageUrl) {
+        URL.revokeObjectURL(imagePreview.dataset.imageUrl);
+      }
+
       if (result.element && result.element.parentNode) {
         result.element.remove();
       }
       this.results.splice(resultIndex, 1);
     }
 
-    // Hide container if no results
-    if (this.results.length === 0) {
+    this.removeNoTextResult(itemId);
+
+    this.updateContainerVisibility();
+  }
+
+  removeNoTextResult(itemId) {
+    const noTextIndex = this.noTextResults.findIndex(
+      (result) => result.id === itemId
+    );
+    if (noTextIndex !== -1) {
+      const result = this.noTextResults[noTextIndex];
+
+      const imagePreview = result.element?.querySelector(
+        ".no-text-image-preview"
+      );
+      if (imagePreview?.dataset.imageUrl) {
+        URL.revokeObjectURL(imagePreview.dataset.imageUrl);
+      }
+
+      if (result.element && result.element.parentNode) {
+        result.element.remove();
+      }
+      this.noTextResults.splice(noTextIndex, 1);
+    }
+
+    if (this.noTextResults.length === 0) {
+      this.noTextResultsContainer.classList.add("hidden");
+    }
+  }
+
+  updateContainerVisibility() {
+    const hasResults = this.results.length > 0 || this.noTextResults.length > 0;
+
+    if (hasResults) {
+      this.resultsContainer.classList.remove("hidden");
+    } else {
       this.resultsContainer.classList.add("hidden");
     }
   }
 
   createResultElement(item) {
     const resultDiv = document.createElement("div");
-    resultDiv.className = "result-item result-item-dark";
+    resultDiv.className = "result-item";
     resultDiv.setAttribute("data-item-id", item.id);
+
+    // Create image preview URL
+    const imageUrl = item.file ? URL.createObjectURL(item.file) : "";
 
     let resultHTML = `
       <div class="result-header">
+        <button class="upload-image-preview" data-image-url="${imageUrl}" data-image-name="${this.escapeHtml(
+      item.file.name
+    )}" title="View original image">
+          <img src="${imageUrl}" alt="${this.escapeHtml(item.file.name)}" />
+        </button>
         <h3 class="result-title">${item.file.name}</h3>
-        <button class="result-remove-btn" data-item-id="${item.id}" title="Remove result">×</button>
+        <button class="result-remove-btn" data-item-id="${
+          item.id
+        }" title="Remove result">×</button>
       </div>
     `;
 
@@ -127,10 +231,12 @@ export class ResultsComponent extends BaseComponent {
         const detectedLangName = this.getLanguageName(results.detectedLanguage);
         resultHTML += `
           <div data-section="detected-language" class="result-section">
-            <span class="result-label-language">🌍 Detected Language:</span>
-            <span class="result-language-badge">
-              ${detectedLangName}
-            </span>
+            <div class="result-section-header">
+              <span class="result-label-language">🌍 Detected Language:</span>
+              <span class="result-language-badge">
+                ${detectedLangName}
+              </span>
+            </div>
           </div>
         `;
       }
@@ -195,6 +301,48 @@ export class ResultsComponent extends BaseComponent {
     }
 
     return resultDiv;
+  }
+
+  createNoTextElement(item) {
+    const noTextDiv = document.createElement("div");
+    noTextDiv.className = "no-text-item";
+    noTextDiv.setAttribute("data-item-id", item.id);
+
+    // Create image preview URL
+    const imageUrl = item.file ? URL.createObjectURL(item.file) : "";
+
+    const fileSize = item.file.size
+      ? this.formatFileSize(item.file.size)
+      : "Unknown size";
+
+    noTextDiv.innerHTML = `
+      <div class="no-text-item-content">
+        <button class="upload-image-preview no-text-image-preview" data-image-url="${imageUrl}" data-image-name="${this.escapeHtml(
+      item.file.name
+    )}" title="View image">
+          <img src="${imageUrl}" alt="${this.escapeHtml(item.file.name)}" />
+        </button>
+        <div class="no-text-item-info">
+          <span class="no-text-item-name">${this.escapeHtml(
+            item.file.name
+          )}</span>
+          <span class="no-text-item-size">${fileSize}</span>
+        </div>
+        <button class="no-text-remove-btn" data-item-id="${
+          item.id
+        }" title="Remove from list">×</button>
+      </div>
+    `;
+
+    return noTextDiv;
+  }
+
+  formatFileSize(bytes) {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   }
 
   async retranslateAllResults(targetLanguage) {
@@ -356,9 +504,35 @@ export class ResultsComponent extends BaseComponent {
   }
 
   clearResults() {
+    // Clean up object URLs to prevent memory leaks
+    this.results.forEach((result) => {
+      const imagePreview = result.element?.querySelector(
+        ".upload-image-preview"
+      );
+      if (imagePreview?.dataset.imageUrl) {
+        URL.revokeObjectURL(imagePreview.dataset.imageUrl);
+      }
+    });
+
+    // Clean up object URLs from no-text results
+    this.noTextResults.forEach((result) => {
+      const imagePreview = result.element?.querySelector(
+        ".no-text-image-preview"
+      );
+      if (imagePreview?.dataset.imageUrl) {
+        URL.revokeObjectURL(imagePreview.dataset.imageUrl);
+      }
+    });
+
     this.results = [];
-    this.resultsContainer.innerHTML = "";
+    this.noTextResults = [];
+    this.successfulResultsContainer.innerHTML = "";
+    this.noTextList.innerHTML = "";
     this.resultsContainer.classList.add("hidden");
+    this.noTextResultsContainer.classList.add("hidden");
+
+    // Close any open modal
+    this.closeImageModal();
   }
 
   getResults() {
@@ -366,6 +540,68 @@ export class ResultsComponent extends BaseComponent {
   }
 
   hasResults() {
-    return this.results.length > 0;
+    return this.results.length > 0 || this.noTextResults.length > 0;
+  }
+
+  openImageModal(imageUrl, imageName) {
+    // Remove existing modal if present
+    this.closeImageModal();
+
+    // Create modal backdrop
+    const modalBackdrop = document.createElement("div");
+    modalBackdrop.className = "image-modal-backdrop";
+    modalBackdrop.id = "imageModal";
+
+    // Create modal content
+    modalBackdrop.innerHTML = `
+      <div class="image-modal-content">
+        <div class="image-modal-header">
+          <h3 class="image-modal-title">${this.escapeHtml(imageName)}</h3>
+          <button class="image-modal-close" title="Close">&times;</button>
+        </div>
+        <div class="image-modal-body">
+          <img src="${imageUrl}" alt="${this.escapeHtml(
+      imageName
+    )}" class="image-modal-img" />
+        </div>
+      </div>
+    `;
+
+    // Add to document
+    document.body.appendChild(modalBackdrop);
+
+    // Add event listeners
+    const closeBtn = modalBackdrop.querySelector(".image-modal-close");
+    closeBtn.addEventListener("click", () => this.closeImageModal());
+
+    // Close on backdrop click
+    modalBackdrop.addEventListener("click", (e) => {
+      if (e.target === modalBackdrop) {
+        this.closeImageModal();
+      }
+    });
+
+    // Close on Escape key
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        this.closeImageModal();
+        document.removeEventListener("keydown", handleEscape);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+
+    // Store escape handler for cleanup
+    modalBackdrop._escapeHandler = handleEscape;
+  }
+
+  closeImageModal() {
+    const modal = document.getElementById("imageModal");
+    if (modal) {
+      // Clean up escape key listener
+      if (modal._escapeHandler) {
+        document.removeEventListener("keydown", modal._escapeHandler);
+      }
+      modal.remove();
+    }
   }
 }

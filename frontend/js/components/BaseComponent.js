@@ -166,7 +166,7 @@ export class BaseComponent {
   showError(message, duration = 5000) {
     this.clearMessages();
     const errorDiv = document.createElement("div");
-    errorDiv.className = "error-message component-error";
+    errorDiv.className = "component-error";
     errorDiv.textContent = message;
 
     if (this.container) {
@@ -184,7 +184,7 @@ export class BaseComponent {
   showSuccess(message, duration = 5000) {
     this.clearMessages();
     const successDiv = document.createElement("div");
-    successDiv.className = "success-message component-success";
+    successDiv.className = "component-success";
     successDiv.textContent = message;
 
     if (this.container) {

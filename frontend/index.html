@@ -9,7 +9,6 @@
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1691.0.min.js"></script>
     <script
         src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
 </head>
 
@@ -17,7 +16,7 @@
     <div class="container">
         <div id="header-placeholder"></div>
 
-        <div class="login-section" id="loginSection">
+        <div id="loginSection">
             <div id="login-form-placeholder"></div>
 
             <div id="register-form-placeholder"></div>
@@ -25,7 +24,7 @@
             <div id="confirmation-form-placeholder"></div>
         </div>
 
-        <div class="app-section" id="appSection" style="display: none">
+        <div id="appSection" style="display: none">
             <div id="language-selection-placeholder"></div>
 
             <div id="file-upload-placeholder"></div>
@@ -33,6 +32,8 @@
             <div id="upload-list-placeholder"></div>
 
             <button id="processBtn" style="display: none">Process All Images</button>
+
+            <button id="clearAllBtn" style="display: none">Clear All</button>
 
             <div id="results-placeholder"></div>
         </div>
