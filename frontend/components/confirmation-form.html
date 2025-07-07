@@ -1,0 +1,14 @@
+<div id="confirmationFormContainer" class="auth-form-container hidden">
+    <h2>Confirm Your Email</h2>
+    <p>We've sent a confirmation code to your email address. Please enter it below to complete your registration.</p>
+    <form id="confirmationForm">
+        <input type="email" id="confirmationEmail" placeholder="Email" readonly autocomplete="email">
+        <input type="text" id="confirmationCode" placeholder="Enter confirmation code" required maxlength="6"
+            pattern="[0-9]{6}" autocomplete="one-time-code">
+        <button type="submit">Confirm Email</button>
+    </form>
+    <div class="confirmation-actions">
+        <button type="button" id="resendCodeBtn" class="secondary-button">Resend Code</button>
+        <button type="button" id="backToLoginBtn" class="secondary-button">Back to Login</button>
+    </div>
+</div>
