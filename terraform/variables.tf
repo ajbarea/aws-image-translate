@@ -45,7 +45,7 @@ variable "frontend_path" {
 variable "allowed_origins" {
   description = "List of allowed origins for CORS"
   type        = list(string)
-  default     = ["http://localhost:8080", "http://127.0.0.1:8080"]
+  default     = ["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5500", "http://127.0.0.1:5500"]
 }
 
 variable "additional_origins" {
@@ -60,13 +60,6 @@ variable "skip_frontend" {
   default     = false
 }
 
-# variable "trigger_run" {
-#   description = "Variable to trigger Terraform Cloud runs without infrastructure changes"
-#   type        = string
-#   default     = "2025-07-04"
-# }
-
-# Add common tags for all resources
 variable "common_tags" {
   description = "Common tags to apply to all resources"
   type        = map(string)
