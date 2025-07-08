@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 import boto3
 import pytest
@@ -33,7 +34,7 @@ def aws_credentials():
 @pytest.fixture(scope="function")
 def dynamodb_table(aws_credentials):
     with mock_dynamodb():
-        dynamodb_client = boto3.client("dynamodb", region_name=AWS_REGION)  # type: ignore
+        dynamodb_client = boto3.client("dynamodb", region_name=AWS_REGION)
         dynamodb_client.create_table(
             TableName=TEST_DDB_TABLE_NAME,
             KeySchema=[{"AttributeName": "subreddit_key", "KeyType": "HASH"}],
@@ -151,12 +152,12 @@ def test_get_aws_error_message_exception_handling():
 
     # Create a mock ClientError that raises an exception when accessing response
     class MockClientError(ClientError):
-        def __init__(self):
+        def __init__(self) -> None:
             # Don't call super().__init__ to avoid parameter issues
             pass
 
-        @property
-        def response(self):
+        @property  # type: ignore[override]
+        def response(self) -> Any:
             raise RuntimeError("Response parsing failed")
 
     mock_error = MockClientError()
@@ -169,11 +170,12 @@ def test_get_aws_error_message_no_response_attribute():
 
     # Create a mock error object without response attribute
     class MockErrorNoResponse(ClientError):
-        def __init__(self):
+        def __init__(self) -> None:
             # Don't call super().__init__ to avoid parameter issues
+            # Don't set response attribute to simulate missing response
             pass
 
-        def __str__(self):
+        def __str__(self) -> str:
             return "Mock error without response"
 
     # Remove the response attribute to test the hasattr check
@@ -190,15 +192,11 @@ def test_get_aws_error_message_invalid_response_structure():
 
     # Test case 1: Response without "Error" key
     class MockErrorNoErrorKey(ClientError):
-        def __init__(self):
+        def __init__(self) -> None:
             # Don't call super().__init__ to avoid parameter issues
-            pass
+            self.response = {"SomeOtherKey": "value"}  # type: ignore
 
-        @property
-        def response(self):
-            return {"SomeOtherKey": "value"}
-
-        def __str__(self):
+        def __str__(self) -> str:
             return "Mock error without Error key"
 
     error_no_error_key = MockErrorNoErrorKey()
@@ -207,15 +205,11 @@ def test_get_aws_error_message_invalid_response_structure():
 
     # Test case 2: Response where "Error" is not a dict
     class MockErrorInvalidError(ClientError):
-        def __init__(self):
+        def __init__(self) -> None:
             # Don't call super().__init__ to avoid parameter issues
-            pass
+            self.response = {"Error": "not a dict"}  # type: ignore
 
-        @property
-        def response(self):
-            return {"Error": "not a dict"}
-
-        def __str__(self):
+        def __str__(self) -> str:
             return "Mock error with invalid Error"
 
     error_invalid_error = MockErrorInvalidError()
@@ -227,7 +221,7 @@ def test_get_aws_error_message_invalid_response_structure():
 @mock_dynamodb
 def test_print_table_items_empty(capsys, aws_credentials):
     # Create table
-    dynamodb_client = boto3.client("dynamodb", region_name=AWS_REGION)  # type: ignore
+    dynamodb_client = boto3.client("dynamodb", region_name=AWS_REGION)
     dynamodb_client.create_table(
         TableName=TEST_DDB_TABLE_NAME,
         KeySchema=[{"AttributeName": "subreddit_key", "KeyType": "HASH"}],
@@ -246,7 +240,7 @@ def test_print_table_items_empty(capsys, aws_credentials):
 @mock_dynamodb
 def test_print_table_items_with_items(capsys, aws_credentials):
     # Create table
-    dynamodb_client = boto3.client("dynamodb", region_name=AWS_REGION)  # type: ignore
+    dynamodb_client = boto3.client("dynamodb", region_name=AWS_REGION)
     dynamodb_client.create_table(
         TableName=TEST_DDB_TABLE_NAME,
         KeySchema=[{"AttributeName": "subreddit_key", "KeyType": "HASH"}],
@@ -338,7 +332,7 @@ def test_update_last_processed_post_id_unexpected_error(monkeypatch, capsys):
 @mock_dynamodb
 def test_create_table_if_not_exists_already_exists(capsys, aws_credentials):
     # Create table
-    dynamodb_client = boto3.client("dynamodb", region_name=AWS_REGION)  # type: ignore
+    dynamodb_client = boto3.client("dynamodb", region_name=AWS_REGION)
     dynamodb_client.create_table(
         TableName=TEST_DDB_TABLE_NAME,
         KeySchema=[{"AttributeName": "subreddit_key", "KeyType": "HASH"}],
