@@ -1,10 +1,11 @@
 import json
+from typing import Any, Dict, Tuple, cast
 
 import boto3
 from botocore.exceptions import ClientError
 
 
-def extract_event_parameters(event):
+def extract_event_parameters(event: Dict[str, Any]) -> Dict[str, Any]:
     """Extract parameters from different event types (S3, API Gateway, direct invocation)."""
     if "Records" in event:
         record = event["Records"][0]
@@ -33,7 +34,7 @@ def extract_event_parameters(event):
     }
 
 
-def create_cors_headers():
+def create_cors_headers() -> Dict[str, str]:
     """Create CORS headers for response."""
     return {
         "Access-Control-Allow-Origin": "*",
@@ -42,7 +43,7 @@ def create_cors_headers():
     }
 
 
-def create_error_response(status_code, error_message):
+def create_error_response(status_code: int, error_message: str) -> Dict[str, Any]:
     """Create standardized error response."""
     return {
         "statusCode": status_code,
@@ -51,7 +52,7 @@ def create_error_response(status_code, error_message):
     }
 
 
-def create_success_response(data):
+def create_success_response(data: Dict[str, Any]) -> Dict[str, Any]:
     """Create standardized success response."""
     return {
         "statusCode": 200,
@@ -60,7 +61,7 @@ def create_success_response(data):
     }
 
 
-def detect_text_from_image(rekognition_client, bucket, key):
+def detect_text_from_image(rekognition_client: Any, bucket: str, key: str) -> str:
     """Detect text from image using Rekognition."""
     print(f"Detecting text in s3://{bucket}/{key}")
 
@@ -77,18 +78,20 @@ def detect_text_from_image(rekognition_client, bucket, key):
     return " ".join(detected_lines)
 
 
-def detect_language(comprehend_client, text):
+def detect_language(comprehend_client: Any, text: str) -> str:
     """Detect language of text using Comprehend."""
     print(f"Detected text: {text}")
 
     comprehend_response = comprehend_client.detect_dominant_language(Text=text)
-    detected_language = comprehend_response["Languages"][0]["LanguageCode"]
+    detected_language = cast(str, comprehend_response["Languages"][0]["LanguageCode"])
 
     print(f"Detected language: {detected_language}")
     return detected_language
 
 
-def translate_text_if_needed(translate_client, text, source_language, target_language):
+def translate_text_if_needed(
+    translate_client: Any, text: str, source_language: str, target_language: str
+) -> str:
     """Translate text if source and target languages differ."""
     if source_language == target_language:
         print(
@@ -101,12 +104,14 @@ def translate_text_if_needed(translate_client, text, source_language, target_lan
         SourceLanguageCode=source_language,
         TargetLanguageCode=target_language,
     )
-    translated_text = translate_response["TranslatedText"]
+    translated_text = cast(str, translate_response["TranslatedText"])
     print(f"Translated text to {target_language}: {translated_text}")
     return translated_text
 
 
-def process_text_detection_and_translation(params, aws_clients):
+def process_text_detection_and_translation(
+    params: Dict[str, Any], aws_clients: Tuple[Any, Any, Any]
+) -> Dict[str, Any]:
     """Process text detection and translation logic."""
     rekognition, comprehend, translate_client = aws_clients
 
@@ -150,7 +155,7 @@ def process_text_detection_and_translation(params, aws_clients):
     )
 
 
-def lambda_handler(event, context):
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Lambda function to process uploaded images:
     1. Detect text using Rekognition

@@ -1,12 +1,13 @@
 import json
 import logging
+from typing import Any, Dict, Tuple
 
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def extract_email_and_code(event):
+def extract_email_and_code(event: Dict[str, Any]) -> Tuple[str, str]:
     request = event.get("request", {})
     user_attributes = request.get("userAttributes", {})
     email = user_attributes.get("email", "unknown")
@@ -14,7 +15,7 @@ def extract_email_and_code(event):
     return email, code
 
 
-def log_cognito_code(trigger_source, email, code):
+def log_cognito_code(trigger_source: str, email: str, code: str) -> None:
     label = (
         "EMAIL CONFIRMATION CODE"
         if trigger_source == "CustomMessage_SignUp"
@@ -25,7 +26,9 @@ def log_cognito_code(trigger_source, email, code):
     logger.info(f"🎯 Trigger Source: {trigger_source}")
 
 
-def set_cognito_response_messages(event, code, is_resend=False):
+def set_cognito_response_messages(
+    event: Dict[str, Any], code: str, is_resend: bool = False
+) -> None:
     if not is_resend:
         subject = f"Your verification code: {code}"
         message = f"""
@@ -48,7 +51,7 @@ If you didn't request this code, please ignore this email.
     event["response"]["emailSubject"] = subject
 
 
-def lambda_handler(event, context):
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Cognito Lambda trigger to log confirmation codes for debugging
     This function is triggered on custom message generation
