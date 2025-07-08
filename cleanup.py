@@ -255,7 +255,7 @@ class AWSResourceCleanup:
 
     def cleanup_all(self, environment: Optional[str] = None) -> Dict[str, Any]:
         """Clean up all project resources."""
-        results = {
+        results: Dict[str, Any] = {
             "dynamodb_tables": {"deleted": [], "failed": []},
             "s3_buckets": {"deleted": [], "failed": []},
         }
@@ -271,7 +271,7 @@ class AWSResourceCleanup:
         return results
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Clean up AWS resources for the image translation project"
     )
