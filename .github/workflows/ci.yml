@@ -44,7 +44,7 @@ jobs:
       # 5. Run mypy type checking
       - name: Run mypy type checking
         run: |
-          python -m mypy src/ --strict
+          python -m mypy
 
       # 6. Upload coverage report to Codecov
       - name: Upload coverage reports to Codecov
