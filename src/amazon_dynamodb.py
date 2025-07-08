@@ -6,23 +6,25 @@ in Reddit ingestion pipelines or similar workflows.
 """
 
 import sys
-from typing import Any, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 import boto3
 from botocore.exceptions import ClientError
-from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource
+
+if TYPE_CHECKING:  # pragma: no cover
+    from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource
 
 from config import AWS_REGION
 
 
-def get_dynamodb_resource() -> DynamoDBServiceResource:
+def get_dynamodb_resource() -> "DynamoDBServiceResource":
     """Creates and returns a boto3 DynamoDB resource.
 
     Returns:
         DynamoDBServiceResource: A boto3 DynamoDB resource configured with the default AWS region.
     """
     return cast(
-        DynamoDBServiceResource, boto3.resource("dynamodb", region_name=AWS_REGION)
+        "DynamoDBServiceResource", boto3.resource("dynamodb", region_name=AWS_REGION)
     )
 
 

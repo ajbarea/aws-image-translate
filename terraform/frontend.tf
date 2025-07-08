@@ -50,7 +50,9 @@ resource "aws_s3_bucket_policy" "frontend_hosting" {
 }
 
 locals {
-  frontend_files = fileset(var.frontend_path, "**/*")
+  all_frontend_files = fileset(var.frontend_path, "**/*")
+  frontend_files     = [for f in local.all_frontend_files : f if f != "js/config.js"]
+
   mime_types = {
     "html" = "text/html",
     "css"  = "text/css",
@@ -89,13 +91,26 @@ resource "local_file" "config" {
 }
 
 resource "aws_s3_object" "frontend_files" {
-  for_each = local.frontend_files
+  for_each = toset(local.frontend_files)
 
   bucket       = aws_s3_bucket.frontend_hosting.id
   key          = each.value
   source       = "${var.frontend_path}/${each.value}"
   content_type = lookup(local.mime_types, element(split(".", each.value), -1), "binary/octet-stream")
-  etag         = each.value == "js/config.js" ? local_file.config.content_md5 : filemd5("${var.frontend_path}/${each.value}")
+  etag         = filemd5("${var.frontend_path}/${each.value}")
+
+  depends_on = [
+    aws_s3_bucket_policy.frontend_hosting
+  ]
+}
+
+# Separate upload for the generated config.js file
+resource "aws_s3_object" "config_js" {
+  bucket       = aws_s3_bucket.frontend_hosting.id
+  key          = "js/config.js"
+  content      = local_file.config.content
+  content_type = "application/javascript"
+  etag         = local_file.config.content_md5
 
   depends_on = [
     aws_s3_bucket_policy.frontend_hosting,

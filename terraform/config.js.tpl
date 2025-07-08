@@ -12,6 +12,9 @@ const AWS_CONFIG = {
   cloudfrontUrl: "${cloudfront_url}",
 };
 console.log("📋 Config: AWS_CONFIG loaded:", AWS_CONFIG);
+console.log("🌍 Config: Current hostname:", window.location.hostname);
+console.log("🔗 Config: Current protocol:", window.location.protocol);
+console.log("🌐 Config: Full URL:", window.location.href);
 
 AWS.config.update({
   region: AWS_CONFIG.region,

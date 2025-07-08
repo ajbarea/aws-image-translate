@@ -22,6 +22,22 @@ from config import (
     REDDIT_USER_AGENT,
 )
 
+# Explicitly export what should be available to other modules
+__all__ = [
+    "praw",
+    "REDDIT_SCRAPING_CONFIG",
+    "create_reddit_credentials",
+    "init_reddit_client",
+    "extract_image_urls_from_submission",
+    "is_supported_media_url",
+    "is_gallery_url",
+    "is_direct_media_url",
+    "get_image_urls_from_subreddits",
+    "get_image_urls_from_translator",
+    "get_new_image_posts_since",
+    "_extract_urls_from_text",
+]
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -63,7 +79,7 @@ def create_reddit_credentials() -> Dict[str, str]:
 
     # Load environment variables from .env.local if it exists
     env_path = Path(__file__).parent.parent / ".env.local"
-    if env_path.exists():
+    if env_path.exists():  # pragma: no cover
         load_dotenv(dotenv_path=env_path)
 
     creds: Dict[str, Optional[str]] = {

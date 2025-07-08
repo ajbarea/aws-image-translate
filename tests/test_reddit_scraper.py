@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import Any, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +9,13 @@ from src import reddit_scraper
 
 
 class DummySubmission:
-    def __init__(self, url, selftext=None, fullname="t3_dummy", created_utc=None):
+    def __init__(
+        self,
+        url: str,
+        selftext: Optional[str] = None,
+        fullname: str = "t3_dummy",
+        created_utc: Optional[float] = None,
+    ) -> None:
         self.url = url
         self.selftext = selftext
         self.fullname = fullname
@@ -150,10 +157,10 @@ def test_init_reddit_client_success_and_failure(monkeypatch):
 
     # Mock Reddit client
     class DummyReddit:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             self.read_only = False
 
-        def subreddit(self, name):
+        def subreddit(self, name: str) -> Any:
             class DummySubreddit:
                 display_name = name
 

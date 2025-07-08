@@ -45,4 +45,3 @@ repos:
       - id: mypy
         additional_dependencies:
           [types-requests, types-boto3, types-beautifulsoup4]
-        files: ^src/
