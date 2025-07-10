@@ -29,6 +29,17 @@ resource "aws_cognito_user_pool_client" "client" {
   user_pool_id        = aws_cognito_user_pool.pool.id
   generate_secret     = false
   explicit_auth_flows = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_PASSWORD_AUTH"]
+
+  # Add required validation settings
+  token_validity_units {
+    access_token  = "hours"
+    id_token      = "hours"
+    refresh_token = "days"
+  }
+
+  access_token_validity  = 24
+  id_token_validity      = 24
+  refresh_token_validity = 30
 }
 
 resource "aws_cognito_identity_pool" "main" {
