@@ -7,7 +7,6 @@ for both AWS S3 and Google Cloud Storage backends.
 import os
 from unittest.mock import MagicMock, patch
 
-
 from src.storage_adapter import (
     _reset_clients,
     check_storage_connectivity,
