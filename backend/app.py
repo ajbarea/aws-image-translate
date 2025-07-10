@@ -1,4 +1,5 @@
 from typing import Optional
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -34,13 +35,13 @@ class ProcessResponse(BaseModel):
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check endpoint - no authentication required"""
     return {"status": "healthy", "service": "aws-image-translate-backend"}
 
 
 @app.post("/process", response_model=ProcessResponse)
-async def process_image(request: ProcessRequest):
+async def process_image(request: ProcessRequest) -> ProcessResponse:
     """
     Process an image: detect text and translate it.
     Note: Authentication temporarily disabled for development

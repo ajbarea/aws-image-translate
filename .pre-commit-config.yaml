@@ -44,4 +44,4 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies:
-          [types-requests, types-boto3, types-beautifulsoup4]
+          [pydantic, fastapi, types-requests, types-boto3, types-beautifulsoup4]

@@ -4,12 +4,12 @@ AWS Image Translate - Cognito Setup Script
 Creates minimal Cognito resources for local development
 """
 
-import subprocess
 import json
+import subprocess
 import sys
 
 
-def run_cmd(cmd):
+def run_cmd(cmd: str) -> str:
     """Run command and return output"""
     try:
         result = subprocess.run(
@@ -22,7 +22,7 @@ def run_cmd(cmd):
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     print("🚀 Creating minimal Cognito setup...")
 
     # Step 1: Create User Pool
