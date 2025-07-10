@@ -262,6 +262,9 @@ export class UploadQueueComponent extends BaseComponent {
     // Remove existing modal if present
     this.closeImageModal();
 
+    // Prevent background scrolling
+    document.body.style.overflow = "hidden";
+
     // Create modal backdrop
     const modalBackdrop = document.createElement("div");
     modalBackdrop.className = "image-modal-backdrop";
@@ -296,6 +299,12 @@ export class UploadQueueComponent extends BaseComponent {
       }
     });
 
+    // Prevent wheel events from bubbling to document when scrolling in modal
+    const modalBody = modalBackdrop.querySelector(".image-modal-body");
+    modalBody.addEventListener("wheel", (e) => {
+      e.stopPropagation();
+    });
+
     // Close on Escape key
     const handleEscape = (e) => {
       if (e.key === "Escape") {
@@ -317,6 +326,9 @@ export class UploadQueueComponent extends BaseComponent {
         document.removeEventListener("keydown", modal._escapeHandler);
       }
       modal.remove();
+
+      // Restore background scrolling
+      document.body.style.overflow = "";
     }
   }
 
