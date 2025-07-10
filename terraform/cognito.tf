@@ -32,7 +32,7 @@ resource "aws_cognito_user_pool_client" "client" {
 
   # AWS Cognito constraints:
   # - access_token_validity: 5 minutes to 1 day
-  # - id_token_validity: 5 minutes to 1 day 
+  # - id_token_validity: 5 minutes to 1 day
   # - refresh_token_validity: 60 minutes to 10 years
   token_validity_units {
     access_token  = "hours"
