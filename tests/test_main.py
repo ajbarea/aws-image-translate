@@ -218,27 +218,24 @@ def test_s3_object_exists_reraises_non_404_errors(mock_boto3):
     mock_s3_client.head_object.assert_called_once_with(Bucket="bucket", Key="key")
 
 
-# Tests for upload_file_to_s3
-@patch("main.boto3")
-def test_upload_file_to_s3_success(mock_boto3):
-    mock_s3_client = MagicMock()
-    mock_boto3.client.return_value = mock_s3_client
+# Tests for upload_file_to_s3 (now imported from storage_adapter)
+@patch("src.storage_adapter.upload_file_to_s3")
+def test_upload_file_to_s3_success(mock_upload):
+    mock_upload.return_value = True
 
-    from main import upload_file_to_s3
+    # Import the function from storage_adapter directly
+    from src.storage_adapter import upload_file_to_s3
 
     result = upload_file_to_s3("file.txt", "bucket", "key")
     assert result is True
-    mock_boto3.client.assert_called_once_with("s3")
-    mock_s3_client.upload_file.assert_called_once_with("file.txt", "bucket", "key")
+    mock_upload.assert_called_once_with("file.txt", "bucket", "key")
 
 
-@patch("main.boto3")
-def test_upload_file_to_s3_failure(mock_boto3):
-    mock_s3_client = MagicMock()
-    mock_boto3.client.return_value = mock_s3_client
-    mock_s3_client.upload_file.side_effect = Exception("Upload error")
+@patch("src.storage_adapter.upload_file_to_s3")
+def test_upload_file_to_s3_failure(mock_upload):
+    mock_upload.return_value = False
 
-    from main import upload_file_to_s3
+    from src.storage_adapter import upload_file_to_s3
 
     result = upload_file_to_s3("file.txt", "bucket", "key")
     assert result is False

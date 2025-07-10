@@ -6,19 +6,8 @@ from botocore.exceptions import ClientError
 
 from config import S3_IMAGE_BUCKET, TARGET_LANGUAGE_CODE
 from src.amazon_rekognition import detect_text_from_s3
-from src.amazon_s3 import list_images_in_bucket
 from src.amazon_translate import detect_language, translate_text
-
-
-def upload_file_to_s3(file_path: str, bucket: str, key: str) -> bool:
-    """Upload a file to an S3 bucket."""
-    s3 = boto3.client("s3")
-    try:
-        s3.upload_file(file_path, bucket, key)
-        return True
-    except Exception as e:
-        print(f"Error uploading file {file_path} to s3://{bucket}/{key}: {e}")
-        return False
+from src.storage_adapter import list_images_in_bucket, upload_file_to_s3
 
 
 def process_image(photo: str, bucket: str, target_lang: str) -> Optional[str]:
