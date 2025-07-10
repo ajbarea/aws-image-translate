@@ -109,6 +109,7 @@ python_version = "3.11"
 files = ["src"]
 strict = true
 show_error_codes = true
+plugins = ["pydantic.mypy"]
 
 # Per-module options
 [[tool.mypy.overrides]]
