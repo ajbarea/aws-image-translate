@@ -30,16 +30,34 @@ resource "aws_cognito_user_pool_client" "client" {
   generate_secret     = false
   explicit_auth_flows = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_PASSWORD_AUTH"]
 
-  # Add required validation settings
+  # AWS Cognito constraints:
+  # - access_token_validity: 5 minutes to 1 day
+  # - id_token_validity: 5 minutes to 1 day 
+  # - refresh_token_validity: 60 minutes to 10 years
   token_validity_units {
     access_token  = "hours"
     id_token      = "hours"
     refresh_token = "days"
   }
 
-  access_token_validity  = 24
-  id_token_validity      = 24
-  refresh_token_validity = 30
+  access_token_validity  = 1  # 1 hour
+  id_token_validity      = 1  # 1 hour
+  refresh_token_validity = 30 # 30 days
+
+  prevent_user_existence_errors = "ENABLED"
+
+  read_attributes = [
+    "email",
+    "email_verified",
+    "name",
+    "preferred_username"
+  ]
+
+  write_attributes = [
+    "email",
+    "name",
+    "preferred_username"
+  ]
 }
 
 resource "aws_cognito_identity_pool" "main" {
