@@ -29,10 +29,18 @@ dependencies = [
     "aiohttp",
     "aiofiles",
     "asyncpraw",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.22.0",
+    "python-jose[cryptography]>=3.3.0",
+    "python-multipart>=0.0.6",
 ]
 
 # Optional dependencies for development (from requirements-dev.txt)
 [project.optional-dependencies]
+# Google Cloud Storage for temporary storage backend switching
+gcs = [
+    "google-cloud-storage>=2.10.0",
+]
 dev = [
     # Testing
     "pytest>=8.0.0",
