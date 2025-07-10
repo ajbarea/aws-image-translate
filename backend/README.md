@@ -53,7 +53,7 @@ FastAPI backend for AWS Image Translate with Cognito authentication.
 ### setup-cognito.py
 
 - **User Pool**: For user registration/authentication
-- **User Pool Client**: Web app client configuration  
+- **User Pool Client**: Web app client configuration
 - **Identity Pool**: For AWS credential federation
 
 ### Backend Features
@@ -89,7 +89,7 @@ FastAPI backend for AWS Image Translate with Cognito authentication.
   ```json
   {
     "bucket": "bucket-name",
-    "key": "image-key.jpg", 
+    "key": "image-key.jpg",
     "targetLanguage": "en",
     "detectedText": "optional-existing-text",
     "detectedLanguage": "optional-source-lang"
