@@ -74,7 +74,7 @@ Launch frontend with Live Server and use the local FastAPI backend:
 
 ```bash
 # 1. Create Cognito resources for authentication
-python setup-cognito.py
+python setup_cognito.py
 
 # 2. Add the output to .env.local file
 
@@ -130,201 +130,43 @@ DYNAMODB_TABLE_NAME=reddit_ingest_state
 
 ## 🔄 Storage Backend Management
 
-### 📦 Switching Between AWS S3 and Google Cloud Storage
+### 📦 Quick Storage Backend Switching
 
-This project includes a **Storage Adapter** that allows you to seamlessly switch between AWS S3 and Google Cloud Storage without changing your application code. This is particularly useful when you're hitting AWS free tier limits during development.
-
-#### 🚀 Quick Storage Switch Commands
+The project includes a **Storage Adapter** for seamless switching between AWS S3 and Google Cloud Storage - perfect for development when hitting free tier limits.
 
 ```bash
 # Check current storage backend
 python configure_storage.py --status
 
-# Switch to Google Cloud Storage (or your own gcloud image bucket)
+# Switch to Google Cloud Storage
 python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket
 
 # Switch back to AWS S3
 python configure_storage.py --backend aws
 ```
 
-#### 🔧 Google Cloud Storage Setup
-
-**Prerequisites:**
-
-1. **Install Google Cloud SDK:** Download from [cloud.google.com/sdk](https://cloud.google.com/sdk/docs/install)
-2. **Install Python dependencies:**
-
-   ```bash
-   pip install .[gcs]
-   # OR use the automated installer
-   python configure_storage.py --install-gcs
-   ```
-
-**Authentication Setup:**
+### 🔧 Google Cloud Storage Quick Setup
 
 ```bash
-# Authenticate with Google Cloud
-gcloud auth login
+# Install dependencies
+python configure_storage.py --install-gcs
+
+# Authenticate
 gcloud auth application-default login
 
-# Set your Google Cloud project
-gcloud config set project YOUR_PROJECT_ID
-
-# Verify your bucket exists (`gcloud-image-bucket` is default)
-gsutil ls gs://gcloud-image-bucket
-```
-
-**Configure the Storage Adapter:**
-
-```bash
-# Switch to Google Cloud Storage
+# Switch backend
 python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket
-
-# Verify configuration
-python configure_storage.py --status
 ```
 
-#### 📊 Storage Backend Comparison
+### 📊 Free Tier Benefits
 
-| Feature | AWS S3 Free Tier | Google Cloud Storage Always Free |
-|---------|------------------|-----------------------------------|
-| 📦 Storage | 5 GB for 12 months | 5 GB regional storage |
-| 🔄 Operations | 20,000 GET, 2,000 PUT | 5,000 Class A, 50,000 Class B operations |
-| 🌐 Transfer | 15 GB out per month | 1 GB network egress |
-| 💰 **Total Dev Capacity** | **~10 GB** when using both! | **Perfect for development** |
+| Storage Provider | Free Tier Limits |
+|------------------|------------------|
+| **AWS S3** | 5 GB storage, 20K GET/2K PUT operations |
+| **Google Cloud Storage** | 5 GB storage, 5K Class A/50K Class B operations |
+| **Combined** | **~10 GB total development capacity!** |
 
-#### 🔒 Security & Authentication
-
-**AWS S3 Authentication:**
-
-* Uses existing AWS credentials (`~/.aws/credentials`)
-* IAM roles
-* Environment variables
-
-**Google Cloud Storage Authentication:**
-
-* Application Default Credentials
-* Service Account JSON keys
-
-**Production Service Account Setup:**
-
-```bash
-# Create service account for production
-gcloud iam service-accounts create image-translate-storage
-
-# Grant storage permissions
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member='serviceAccount:image-translate-storage@YOUR_PROJECT_ID.iam.gserviceaccount.com' \
-  --role='roles/storage.admin'
-
-# Download credentials
-gcloud iam service-accounts keys create gcs-key.json \
-  --iam-account=image-translate-storage@YOUR_PROJECT_ID.iam.gserviceaccount.com
-
-# Configure with service account
-python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket --credentials gcs-key.json
-```
-
-#### 🔍 Troubleshooting Storage Issues
-
-**Common Issues & Solutions:**
-
-1. **"Import Error: google.cloud.storage"**
-
-   ```bash
-   python configure_storage.py --install-gcs
-   ```
-
-2. **"Your default credentials were not found"**
-
-   ```bash
-   # Option 1: Application Default Credentials (recommended)
-   gcloud auth application-default login
-
-   # Option 2: If gcloud not found in VS Code terminal
-   export PATH="/c/Users/YOUR_USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin:$PATH"
-   gcloud auth application-default login
-   ```
-
-3. **"gcloud: command not found" in VS Code terminal**
-
-   **Quick Fix:**
-
-   ```bash
-   # Add Google Cloud SDK to PATH (replace YOUR_USERNAME)
-   export PATH="/c/Users/YOUR_USERNAME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin:$PATH"
-   gcloud --version
-   ```
-
-   **Permanent Fix:**
-   * Add Google Cloud SDK to your system PATH in Windows Environment Variables
-   * Or reload VS Code: `Ctrl+Shift+P` → "Developer: Reload Window"
-
-4. **"The billing account for the owning project is disabled" (GCS)**
-
-   Google Cloud Storage requires billing to be enabled, even for free tier usage:
-
-   ```bash
-   # Enable billing for your project in Google Cloud Console:
-   # 1. Go to: https://console.cloud.google.com/billing
-   # 2. Link your project to a billing account
-   # 3. Google Cloud has a generous free tier that covers development needs
-   ```
-
-5. **"Permission denied" errors**
-   * **AWS**: Check IAM permissions (`s3:GetObject`, `s3:PutObject`, `s3:ListBucket`)
-   * **GCS**: Verify service account has `storage.admin` or similar permissions
-
-6. **Storage connectivity test failed**
-
-   ```bash
-   # Test current configuration
-   python configure_storage.py --test
-
-   # Get setup help
-   python configure_storage.py --setup-help gcs  # or aws
-   ```
-
-#### 📂 Storage Configuration Files
-
-**Environment Configuration (`.env.local`):**
-
-```env
-# AWS S3 Configuration (default)
-STORAGE_BACKEND=aws
-
-# Google Cloud Storage Configuration
-STORAGE_BACKEND=gcs
-GCS_BUCKET_NAME=gcloud-image-bucket
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json  # Optional
-```
-
-**The storage adapter automatically handles:**
-
-* ✅ Function call routing to the correct backend
-* ✅ Bucket name management (GCS uses configured bucket, AWS uses function parameter)
-* ✅ Error handling and logging
-* ✅ File upload/download operations
-* ✅ Image listing and filtering
-
-#### 🎯 Development Workflow Example
-
-```bash
-# 1. Start with AWS S3 (default)
-python main.py  # Uses AWS S3
-
-# 2. Hit AWS free tier limits? Switch to GCS
-python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket
-
-# 3. Continue development seamlessly
-python main.py  # Now uses Google Cloud Storage - same code!
-
-# 4. Ready for production? Switch back
-python configure_storage.py --backend aws
-
-# 5. Deploy to production with AWS
-terraform apply
-```
+> **📖 For detailed configuration, troubleshooting, and advanced features, see the [Storage Adapter Guide](STORAGE_ADAPTER.md)**
 
 ## 🛠️ Infrastructure Management
 

@@ -1,78 +1,35 @@
-# Storage Adapter - Switch Between AWS S3 and Google Cloud Storage
+# Storage Adapter - Detailed Configuration Guide
 
-The AWS Image Translate project now includes a **Storage Adapter** that allows you to temporarily switch from AWS S3 to Google Cloud Storage during development. This is particularly useful when you're hitting AWS free tier limits but want to continue development without changing your core application logic.
+> **Note**: For a quick overview, see the [Storage Backend Management section](README.md#-storage-backend-management) in the main README.
 
-## Quick Start
+The AWS Image Translate project includes a **Storage Adapter** that allows seamless switching between AWS S3 and Google Cloud Storage. This detailed guide covers advanced configuration options and troubleshooting.
 
-### Switch to Google Cloud Storage (Temporary Development)
-
-1. **Install Google Cloud Storage dependencies:**
-
-   ```bash
-   pip install google-cloud-storage
-   # OR use the project's optional dependencies
-   pip install .[gcs]
-   # OR
-   python configure_storage.py --install-gcs
-   ```
-
-2. **Set up Google Cloud Storage:**
-
-   ```bash
-   # Create a GCS bucket (replace with your unique name, or use the default)
-   gsutil mb gs://gcloud-image-bucket
-   # OR use your own unique bucket name
-   gsutil mb gs://your-dev-bucket-name
-
-   # Authenticate with Google Cloud
-   gcloud auth application-default login
-   ```
-
-3. **Configure the storage adapter:**
-
-   ```bash
-   python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket
-   ```
-
-4. **Your app now uses Google Cloud Storage!** No code changes needed.
-
-### Switch Back to AWS S3 (Production)
+## Quick Reference
 
 ```bash
+# Check current backend
+python configure_storage.py --status
+
+# Switch to Google Cloud Storage
+python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket
+
+# Switch back to AWS S3
 python configure_storage.py --backend aws
 ```
 
-## How It Works
+## Advanced Configuration
 
-The storage adapter provides the same API interface regardless of whether you're using AWS S3 or Google Cloud Storage:
+### Environment Variables
 
-```python
-# These functions work with both S3 and GCS
-from src.storage_adapter import list_images_in_bucket, upload_file_to_s3, upload_fileobj_to_s3
+Configure storage backend via `.env.local`:
 
-# List images (works with both backends)
-images = list_images_in_bucket("bucket-name")
-
-# Upload file (works with both backends)
-success = upload_file_to_s3("local/file.jpg", "bucket-name", "remote/file.jpg")
-
-# Upload file object (works with both backends)
-success = upload_fileobj_to_s3(file_object, "bucket-name", "remote/file.jpg")
-```
-
-The adapter automatically routes calls to the appropriate backend based on your configuration.
-
-## Configuration
-
-The storage backend is controlled by environment variables in your `.env.local` file:
-
-### AWS S3 (Default)
+**AWS S3 (Default):**
 
 ```bash
 STORAGE_BACKEND=aws
 ```
 
-### Google Cloud Storage
+**Google Cloud Storage:**
 
 ```bash
 STORAGE_BACKEND=gcs
@@ -80,38 +37,23 @@ GCS_BUCKET_NAME=your-gcs-bucket-name
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json  # Optional
 ```
 
-## Management Commands
-
-### Check Current Status
+### CLI Command Reference
 
 ```bash
+# Status and help
 python configure_storage.py --status
-```
+python configure_storage.py --setup-help [aws|gcs]
 
-### Get Setup Help
-
-```bash
-# AWS setup instructions
-python configure_storage.py --setup-help aws
-
-# Google Cloud Storage setup instructions
-python configure_storage.py --setup-help gcs
-```
-
-### Switch Backends
-
-```bash
-# Switch to AWS S3
+# Backend switching
 python configure_storage.py --backend aws
-
-# Switch to Google Cloud Storage
 python configure_storage.py --backend gcs --bucket-name your-bucket
-
-# Include service account credentials path
 python configure_storage.py --backend gcs --bucket-name your-bucket --credentials /path/to/key.json
+
+# Installation
+python configure_storage.py --install-gcs
 ```
 
-## Cost Comparison
+## Cost Comparison & Use Cases
 
 | Feature | AWS S3 Free Tier | Google Cloud Storage Always Free |
 |---------|------------------|-----------------------------------|
@@ -119,78 +61,55 @@ python configure_storage.py --backend gcs --bucket-name your-bucket --credential
 | Operations | 20,000 GET, 2,000 PUT | 5,000 Class A, 50,000 Class B operations |
 | Transfer | 15 GB out per month | 1 GB network egress |
 
-Both provide sufficient resources for development, and switching between them gives you double the free resources!
+**When to use each:**
 
-## Important Notes
+- **AWS S3**: Production deployments, full AI pipeline (Rekognition, Translate, Comprehend)
+- **GCS**: Development when hitting AWS limits, additional free storage capacity
+- **Both**: Maximize free tier resources (~10 GB total storage)
 
-1. **Development vs Production**: This adapter is designed for temporary development use. For production, stick with your primary choice (AWS S3 in this case).
+## Important Limitations
 
-2. **AWS AI Services Limitation**: AWS Rekognition, Translate, and Comprehend can only read from AWS S3 buckets. The Google Cloud Storage option is useful for:
-   - Storing intermediate files during development
-   - File uploads and downloads
-   - Testing storage functionality
-   - When you need extra storage space during development
+**AWS AI Services Requirement**: AWS Rekognition, Translate, and Comprehend can only read from AWS S3 buckets. Use GCS for:
 
-   For full AI processing pipeline, you'll need AWS S3.
+- Development file storage when hitting AWS limits
+- File uploads/downloads testing
+- Additional storage capacity during development
 
-3. **Data Migration**: The adapter doesn't automatically migrate existing data between storage providers. You'll need to manually transfer files if switching permanently.
+**For full AI processing pipeline, AWS S3 is required.**
 
-4. **Authentication**:
-   - AWS S3: Uses your existing AWS credentials
-   - GCS: Requires Google Cloud authentication (see setup instructions)
+**Data Migration**: The adapter doesn't automatically migrate data between providers. Manual transfer required for permanent switches.
 
-5. **Bucket Names**:
-   - AWS S3: Bucket name passed to each function call
-   - GCS: Uses the bucket name from `GCS_BUCKET_NAME` environment variable
+**Authentication Requirements**:
 
-6. **Regional Considerations**:
-   - AWS S3: Bucket region set in `config.py` (`AWS_REGION`)
-   - GCS: Buckets are global, but you can specify regions during creation
+- **AWS S3**: Uses existing AWS credentials
+- **GCS**: Requires Google Cloud authentication (see README troubleshooting section)
+
+## API Interface
+
+The storage adapter provides a unified API regardless of backend:
+
+```python
+from src.storage_adapter import list_images_in_bucket, upload_file_to_s3, upload_fileobj_to_s3
+
+# These functions work with both S3 and GCS
+images = list_images_in_bucket("bucket-name")
+success = upload_file_to_s3("local/file.jpg", "bucket-name", "remote/file.jpg")
+success = upload_fileobj_to_s3(file_object, "bucket-name", "remote/file.jpg")
+```
 
 ## Troubleshooting
 
-### "Import Error: google.cloud.storage"
+For detailed troubleshooting (authentication, permissions, billing, etc.), see the [README troubleshooting section](README.md#-troubleshooting-storage-issues).
+
+**Quick fixes:**
 
 ```bash
-pip install google-cloud-storage
-# OR use project dependencies
-pip install .[gcs]
-```
+# Install GCS dependencies
+python configure_storage.py --install-gcs
 
-### "GCS_BUCKET_NAME environment variable is required"
+# Test current configuration
+python configure_storage.py --test
 
-```bash
-python configure_storage.py --backend gcs --bucket-name your-bucket-name
-```
-
-### "Storage connectivity check failed"
-
-Check your authentication:
-
-- **AWS**: `aws configure` or verify environment variables
-- **GCS**: `gcloud auth application-default login`
-
-### "Permission denied" errors
-
-Ensure your credentials have the necessary permissions:
-
-- **AWS S3**: `s3:GetObject`, `s3:PutObject`, `s3:ListBucket`
-- **GCS**: `storage.objects.create`, `storage.objects.get`, `storage.objects.list`
-
-## Example Workflow
-
-```bash
-# You're developing and hit AWS free tier limits
-python configure_storage.py --status
-# Shows: Backend: AWS S3, remaining quota low
-
-# Switch to Google Cloud Storage for continued development
-python configure_storage.py --setup-help gcs  # Follow setup instructions
-python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket
-
-# Continue development as normal
-python main.py  # Works exactly the same!
-
-# When ready for production, switch back
-python configure_storage.py --backend aws
+# Get setup help
+python configure_storage.py --setup-help gcs
 ```
