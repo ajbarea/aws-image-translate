@@ -3,11 +3,7 @@
 resource "aws_s3_bucket" "image_storage" {
   bucket        = var.s3_bucket_name
   force_destroy = true
-
-  tags = {
-    Name    = var.s3_bucket_name
-    Purpose = "image-storage"
-  }
+  tags          = local.common_tags
 }
 
 resource "aws_s3_bucket_ownership_controls" "image_storage" {

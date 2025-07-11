@@ -3,12 +3,7 @@
 resource "aws_s3_bucket" "frontend_hosting" {
   bucket        = var.frontend_bucket_name
   force_destroy = true
-
-  tags = {
-    Name        = var.frontend_bucket_name
-    Environment = var.environment
-    Purpose     = "website-hosting"
-  }
+  tags          = local.common_tags
 }
 
 resource "aws_s3_bucket_website_configuration" "frontend_hosting" {
@@ -49,22 +44,6 @@ resource "aws_s3_bucket_policy" "frontend_hosting" {
   })
 }
 
-locals {
-  all_frontend_files = fileset(var.frontend_path, "**/*")
-  frontend_files     = [for f in local.all_frontend_files : f if f != "js/config.js"]
-
-  mime_types = {
-    "html" = "text/html",
-    "css"  = "text/css",
-    "js"   = "application/javascript",
-    "png"  = "image/png",
-    "jpg"  = "image/jpeg",
-    "jpeg" = "image/jpeg",
-    "gif"  = "image/gif",
-    "ico"  = "image/x-icon",
-  }
-}
-
 # Create config.js with all necessary values
 resource "local_file" "config" {
   content = templatefile("${path.module}/config.js.tpl", {
@@ -85,8 +64,7 @@ resource "local_file" "config" {
     aws_cognito_identity_pool.main,
     aws_s3_bucket.image_storage,
     aws_apigatewayv2_api.image_api,
-    aws_lambda_function.image_processor,
-    aws_cloudfront_distribution.website
+    aws_lambda_function.image_processor
   ]
 }
 

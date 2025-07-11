@@ -18,8 +18,5 @@ resource "aws_dynamodb_table" "state_table" {
     enabled = true
   }
 
-  tags = {
-    Name    = var.dynamodb_table_name
-    Purpose = "state-tracking"
-  }
+  tags = local.common_tags
 }

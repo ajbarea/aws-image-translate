@@ -6,10 +6,16 @@ resource "aws_apigatewayv2_api" "image_api" {
   description   = "API for image processing"
 
   cors_configuration {
-    allow_origins = concat(var.allowed_origins, var.additional_origins, ["*"])
+    allow_origins = concat(
+      var.allowed_origins,
+      var.additional_origins,
+      ["https://${aws_cloudfront_distribution.website.domain_name}"]
+    )
     allow_methods = ["POST", "OPTIONS"]
     allow_headers = ["Content-Type", "Authorization", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token"]
   }
+
+  tags = local.common_tags
 }
 
 resource "aws_apigatewayv2_stage" "api_stage" {

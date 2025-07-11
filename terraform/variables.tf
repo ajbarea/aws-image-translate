@@ -54,18 +54,32 @@ variable "additional_origins" {
   default     = []
 }
 
-variable "skip_frontend" {
-  description = "Whether to skip the frontend deployment"
-  type        = bool
-  default     = false
+variable "cognito_access_token_validity" {
+  description = "Validity period for Cognito access tokens (in hours, 1-24)"
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.cognito_access_token_validity >= 1 && var.cognito_access_token_validity <= 24
+    error_message = "Access token validity must be between 1 and 24 hours."
+  }
 }
 
-variable "common_tags" {
-  description = "Common tags to apply to all resources"
-  type        = map(string)
-  default = {
-    Project     = "aws-image-translate"
-    Environment = "dev"
-    ManagedBy   = "terraform"
+variable "cognito_id_token_validity" {
+  description = "Validity period for Cognito ID tokens (in hours, 1-24)"
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.cognito_id_token_validity >= 1 && var.cognito_id_token_validity <= 24
+    error_message = "ID token validity must be between 1 and 24 hours."
+  }
+}
+
+variable "cognito_refresh_token_validity" {
+  description = "Validity period for Cognito refresh tokens (in days, 1-3650)"
+  type        = number
+  default     = 30
+  validation {
+    condition     = var.cognito_refresh_token_validity >= 1 && var.cognito_refresh_token_validity <= 3650
+    error_message = "Refresh token validity must be between 1 and 3650 days (10 years)."
   }
 }
