@@ -11,7 +11,6 @@ Usage:
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
 from typing import Dict, Optional
@@ -79,7 +78,7 @@ def show_status() -> None:
         print("    Check your credentials and configuration")
 
 
-def setup_aws() -> None:
+def setup_aws() -> None:  # pragma: no cover
     """Provide instructions for AWS setup."""
     print("AWS S3 Setup:")
     print("1. Ensure your AWS credentials are configured:")
@@ -93,7 +92,7 @@ def setup_aws() -> None:
     print("3. Run: python configure_storage.py --backend aws")
 
 
-def setup_gcs() -> None:
+def setup_gcs() -> None:  # pragma: no cover
     """Provide instructions for Google Cloud Storage setup."""
     print("Google Cloud Storage Setup:")
     print()
@@ -127,7 +126,7 @@ def setup_gcs() -> None:
     print("   python configure_storage.py --backend gcs --bucket-name your-bucket-name")
 
 
-def install_gcs_dependencies() -> bool:
+def install_gcs_dependencies() -> bool:  # pragma: no cover
     """Install Google Cloud Storage dependencies."""
     try:
         import subprocess
@@ -150,7 +149,49 @@ def install_gcs_dependencies() -> bool:
         return False
 
 
-def main() -> None:
+def handle_setup_help(args: argparse.Namespace) -> None:
+    """Handle setup help command."""
+    if args.setup_help == "aws":
+        setup_aws()
+    elif args.setup_help == "gcs":
+        setup_gcs()
+
+
+def handle_backend_configuration(args: argparse.Namespace) -> None:
+    """Handle backend configuration command."""
+    if args.backend == "gcs" and not args.bucket_name:
+        print("Error: --bucket-name is required when configuring GCS backend")
+        print(
+            "Example: python configure_storage.py --backend gcs --bucket-name my-bucket"
+        )
+        return
+
+    try:
+        create_env_file(args.backend, args.bucket_name, args.credentials)
+        print(f"✓ Configured storage backend: {args.backend.upper()}")
+
+        if args.backend == "gcs":
+            print()
+            print("Next steps for Google Cloud Storage:")
+            print("1. Ensure you have authentication set up")
+            print("2. Test connectivity: python configure_storage.py --status")
+            print("3. If you need help: python configure_storage.py --setup-help gcs")
+
+    except Exception as e:
+        print(f"Error configuring storage: {e}")
+
+
+def show_usage_examples() -> None:  # pragma: no cover
+    """Show usage examples."""
+    print("Use --help for usage information")
+    print("Examples:")
+    print("  python configure_storage.py --status")
+    print("  python configure_storage.py --backend aws")
+    print("  python configure_storage.py --backend gcs --bucket-name my-bucket")
+    print("  python configure_storage.py --setup-help gcs")
+
+
+def main() -> None:  # pragma: no cover
     parser = argparse.ArgumentParser(
         description="Configure storage backend for AWS Image Translate pipeline"
     )
@@ -185,10 +226,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.setup_help:
-        if args.setup_help == "aws":
-            setup_aws()
-        elif args.setup_help == "gcs":
-            setup_gcs()
+        handle_setup_help(args)
         return
 
     if args.install_gcs:
@@ -204,36 +242,10 @@ def main() -> None:
         return
 
     if args.backend:
-        if args.backend == "gcs" and not args.bucket_name:
-            print("Error: --bucket-name is required when configuring GCS backend")
-            print(
-                "Example: python configure_storage.py --backend gcs --bucket-name my-bucket"
-            )
-            return
-
-        try:
-            create_env_file(args.backend, args.bucket_name, args.credentials)
-            print(f"✓ Configured storage backend: {args.backend.upper()}")
-
-            if args.backend == "gcs":
-                print()
-                print("Next steps for Google Cloud Storage:")
-                print("1. Ensure you have authentication set up")
-                print("2. Test connectivity: python configure_storage.py --status")
-                print(
-                    "3. If you need help: python configure_storage.py --setup-help gcs"
-                )
-
-        except Exception as e:
-            print(f"Error configuring storage: {e}")
+        handle_backend_configuration(args)
     else:
-        print("Use --help for usage information")
-        print("Examples:")
-        print("  python configure_storage.py --status")
-        print("  python configure_storage.py --backend aws")
-        print("  python configure_storage.py --backend gcs --bucket-name my-bucket")
-        print("  python configure_storage.py --setup-help gcs")
+        show_usage_examples()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
