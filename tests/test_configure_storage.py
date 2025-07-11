@@ -1,6 +1,5 @@
-from unittest.mock import mock_open, patch
 import argparse
-
+from unittest.mock import mock_open, patch
 
 from configure_storage import (
     create_env_file,

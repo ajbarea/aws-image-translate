@@ -1,10 +1,11 @@
 import sys
-from unittest.mock import patch, MagicMock
+from typing import List
+from unittest.mock import MagicMock, patch
 
 import configure_storage
 
 
-def run_main_with_args(args):
+def run_main_with_args(args: List[str]) -> None:
     with patch.object(sys, "argv", ["configure_storage.py"] + args):
         configure_storage.main()
 
