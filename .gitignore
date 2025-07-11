@@ -244,3 +244,4 @@ uncovered
 terraform/cognito_triggers.zip
 terraform/image_processor.zip
 task.md
+aws_cred.txt

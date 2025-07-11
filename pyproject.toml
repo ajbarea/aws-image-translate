@@ -29,7 +29,7 @@ dependencies = [
     "aiohttp",
     "aiofiles",
     "asyncpraw",
-    "fastapi>=0.100.0",
+    "fastapi[standard]>=0.100.0",
     "uvicorn[standard]>=0.22.0",
     "python-jose[cryptography]>=3.3.0",
     "python-multipart>=0.0.6",
@@ -68,6 +68,7 @@ dev = [
     "aiofiles>=23.0.0",
     "asyncpraw>=7.7.0",
     "types-aiofiles>=23.0.0",
+    "httpx>=0.24.0",
     # Code analysis
     "pysonar>=0.1.0",
 ]
