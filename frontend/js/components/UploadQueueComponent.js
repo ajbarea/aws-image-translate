@@ -301,9 +301,10 @@ export class UploadQueueComponent extends BaseComponent {
 
     // Prevent wheel events from bubbling to document when scrolling in modal
     const modalBody = modalBackdrop.querySelector(".image-modal-body");
-    modalBody.addEventListener("wheel", (e) => {
+    const handleWheel = (e) => {
       e.stopPropagation();
-    });
+    };
+    modalBody.addEventListener("wheel", handleWheel);
 
     // Close on Escape key
     const handleEscape = (e) => {
@@ -314,8 +315,10 @@ export class UploadQueueComponent extends BaseComponent {
     };
     document.addEventListener("keydown", handleEscape);
 
-    // Store escape handler for cleanup
+    // Store event handlers for cleanup
     modalBackdrop._escapeHandler = handleEscape;
+    modalBackdrop._wheelHandler = handleWheel;
+    modalBackdrop._modalBody = modalBody;
   }
 
   closeImageModal() {
@@ -325,6 +328,12 @@ export class UploadQueueComponent extends BaseComponent {
       if (modal._escapeHandler) {
         document.removeEventListener("keydown", modal._escapeHandler);
       }
+
+      // Clean up wheel event listener
+      if (modal._wheelHandler && modal._modalBody) {
+        modal._modalBody.removeEventListener("wheel", modal._wheelHandler);
+      }
+
       modal.remove();
 
       // Restore background scrolling
