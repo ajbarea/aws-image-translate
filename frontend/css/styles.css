@@ -144,6 +144,7 @@ body {
   align-items: center;
   gap: var(--space-4);
   justify-content: center;
+  flex-wrap: nowrap;
 }
 
 .header-logo {
@@ -153,11 +154,11 @@ body {
 }
 
 .header-section img {
-  width: 4rem;
-  height: 4rem;
+  width: 5rem;
+  height: 5rem;
+  padding: var(--space-1);
   border-radius: 50%;
   background: rgba(148, 163, 184, 0.2);
-  padding: var(--space-2);
   backdrop-filter: blur(10px);
   border: 2px solid rgba(148, 163, 184, 0.3);
   object-fit: contain;
@@ -215,6 +216,7 @@ body {
   background-clip: text;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   letter-spacing: -0.025em;
+  white-space: nowrap;
 }
 
 .header-subtitle {
@@ -874,6 +876,8 @@ button[type="submit"]:active {
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-6);
   box-shadow: var(--shadow-sm);
+  flex-wrap: nowrap;
+  flex-direction: row;
 }
 
 .user-info-welcome {
@@ -889,6 +893,7 @@ button[type="submit"]:active {
   cursor: pointer;
   font-size: 0.875rem;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .logout-button:hover {
@@ -1227,8 +1232,9 @@ input[type="file"].hidden {
   }
 
   .header-main {
-    flex-direction: column;
+    flex-direction: row;
     gap: var(--space-3);
+    flex-wrap: nowrap !important;
   }
 
   .header-text {
@@ -1276,9 +1282,10 @@ input[type="file"].hidden {
   }
 
   .user-info-bar {
-    flex-direction: column;
+    flex-direction: row;
     gap: var(--space-3);
     text-align: center;
+    flex-wrap: nowrap !important;
   }
 
   .result-header {
@@ -1346,8 +1353,9 @@ input[type="file"].hidden {
   }
 
   .header-main {
-    flex-direction: column;
+    flex-direction: row;
     gap: var(--space-2);
+    flex-wrap: nowrap !important;
   }
 
   .header-text {
