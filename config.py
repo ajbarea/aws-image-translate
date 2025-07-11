@@ -20,6 +20,12 @@ SOURCE_LANGUAGE_CODE = "es"  # Spanish
 TARGET_LANGUAGE_CODE = "en"  # English
 AWS_REGION = "us-east-1"
 
+# Cognito Configuration
+COGNITO_REGION = os.getenv("COGNITO_REGION", AWS_REGION)
+COGNITO_USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID")
+COGNITO_APP_CLIENT_ID = os.getenv("COGNITO_APP_CLIENT_ID")
+COGNITO_IDENTITY_POOL_ID = os.getenv("COGNITO_IDENTITY_POOL_ID")
+
 # Language Configuration
 LANGUAGE_CODES = {
     "en": "English",

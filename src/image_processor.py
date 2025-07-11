@@ -24,8 +24,8 @@ from src.amazon_dynamodb import (
     get_last_processed_post_id,
     update_last_processed_post_id,
 )
-from src.amazon_s3 import upload_fileobj_to_s3
 from src.reddit_scraper import get_new_image_posts_since, init_reddit_client
+from src.storage_adapter import upload_fileobj_to_s3
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

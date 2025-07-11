@@ -3,7 +3,7 @@
 # Image Processor Lambda
 data "archive_file" "image_processor_zip" {
   type        = "zip"
-  source_dir  = "../lambda"
+  source_file = "../lambda/image_processor.py"
   output_path = "${path.module}/image_processor.zip"
 }
 
@@ -25,9 +25,7 @@ resource "aws_lambda_function" "image_processor" {
     }
   }
 
-  tags = {
-    Name = "${var.project_name}-image-processor"
-  }
+  tags = local.common_tags
 
   depends_on = [
     aws_iam_role_policy_attachment.image_processor_attachment,
@@ -125,6 +123,8 @@ resource "aws_lambda_function" "cognito_triggers" {
   timeout          = 30
   source_code_hash = data.archive_file.cognito_triggers_zip.output_base64sha256
 
+  tags = local.common_tags
+
   depends_on = [aws_iam_role_policy.cognito_triggers_policy]
 }
 
@@ -155,7 +155,7 @@ resource "aws_iam_role_policy" "cognito_triggers_policy" {
       {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-cognito-triggers:*"
       }
     ]
   })

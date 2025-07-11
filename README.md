@@ -10,6 +10,7 @@
 | **📄 [Reddit Pipeline Documentation](src/README.md)**  | Complete technical guide  | Reddit API integration, AWS service architecture, module APIs, deployment patterns |
 | **🏗️ [Infrastructure Guide](terraform/README.md)**    | Infrastructure automation | Terraform deployment, cost optimization, security best practices                   |
 | **🌐 [Frontend Deployment Guide](frontend/README.md)** | Web interface setup       | Cognito authentication, S3 integration, deployment options                         |
+| **🔄 [Storage Adapter Guide](STORAGE_ADAPTER.md)**     | Storage backend switching | AWS S3 ↔ Google Cloud Storage, free tier optimization                            |
 
 ## 🏗️ System Architecture Overview
 
@@ -64,7 +65,23 @@ region=us-east-1
 python -m venv .venv
 source .venv/Scripts/activate  # Windows
 python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
+pip install .[dev]
+```
+
+### 🌐 Local Development Setup (Recommended)
+
+Launch frontend with Live Server and use the local FastAPI backend:
+
+```bash
+# 1. Create Cognito resources for authentication
+python setup_cognito.py
+
+# 2. Add the output to .env.local file
+
+# 3. Start the backend
+fastapi dev backend/app.py
+
+# 4. Open frontend/index.html with Live Server
 ```
 
 ### 🏃 Running the CLI
@@ -110,6 +127,46 @@ DYNAMODB_TABLE_NAME=reddit_ingest_state
 * 🌐 **SOURCE\_LANGUAGE\_CODE**: `"es"` - Default source language (Spanish)
 * 🌐 **TARGET\_LANGUAGE\_CODE**: `"en"` - Default target language (English)
 * 📍 **AWS\_REGION**: `"us-east-1"` - AWS region for all services
+
+## 🔄 Storage Backend Management
+
+### 📦 Quick Storage Backend Switching
+
+The project includes a **Storage Adapter** for seamless switching between AWS S3 and Google Cloud Storage - perfect for development when hitting free tier limits.
+
+```bash
+# Check current storage backend
+python configure_storage.py --status
+
+# Switch to Google Cloud Storage
+python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket
+
+# Switch back to AWS S3
+python configure_storage.py --backend aws
+```
+
+### 🔧 Google Cloud Storage Quick Setup
+
+```bash
+# Install dependencies
+python configure_storage.py --install-gcs
+
+# Authenticate
+gcloud auth application-default login
+
+# Switch backend
+python configure_storage.py --backend gcs --bucket-name gcloud-image-bucket
+```
+
+### 📊 Free Tier Benefits
+
+| Storage Provider | Free Tier Limits |
+|------------------|------------------|
+| **AWS S3** | 5 GB storage, 20K GET/2K PUT operations |
+| **Google Cloud Storage** | 5 GB storage, 5K Class A/50K Class B operations |
+| **Combined** | **~10 GB total development capacity!** |
+
+> **📖 For detailed configuration, troubleshooting, and advanced features, see the [Storage Adapter Guide](STORAGE_ADAPTER.md)**
 
 ## 🛠️ Infrastructure Management
 

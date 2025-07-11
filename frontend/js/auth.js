@@ -394,10 +394,6 @@ class AuthManager {
       return "Password must contain at least one number";
     }
 
-    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
-      return "Password must contain at least one special character";
-    }
-
     console.log("✅ AuthManager: Password validation passed");
     return null;
   }
