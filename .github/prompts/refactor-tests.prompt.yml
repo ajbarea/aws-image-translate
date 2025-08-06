@@ -1,0 +1,42 @@
+name: "Update and Refactor Unit Tests"
+description: "Updates a test file based on recent code changes and refactors it for clarity, maintainability, and full coverage."
+tags:
+  - python
+  - testing
+  - pytest
+  - refactor
+  - quality
+  - test-maintenance
+prompt: |
+  Act as a meticulous Senior Software Engineer in Test (SDET) with expertise in writing maintainable and robust automated tests using pytest or unittest.
+
+  The implementation code previously tested by the file below has changed. Your task is to **update and refactor the test file** to reflect those changes while also applying modern best practices for test quality and readability.
+
+  ### Part 1 - Update the Tests:
+  - Carefully analyze the provided test file in context of the **updated implementation code**.
+  - Modify or replace test cases to reflect changes in:
+    * Function signatures or arguments
+    * Return values or behavior
+    * Error conditions or exceptions raised
+  - Remove any obsolete tests that are no longer relevant.
+  - Add # pragma no cover where necessary
+  - Identify missing branch coverage that is due to lazy initialization logic (missing else branch) and add tests to cover these cases.
+  - Add new tests to ensure full coverage of any newly introduced logic or edge cases.
+
+  ### Part 2 - Refactor for Maintainability:
+  Apply the following principles:
+  1. **Single Responsibility:** Split large test methods into smaller ones, each focused on a single scenario or behavior.
+  2. **Parameterization:** Use `pytest.mark.parametrize` or `unittest.TestCase.subTest` to reduce duplication where multiple inputs/outputs are tested similarly.
+  3. **Descriptive Assertions:** Enhance all assertions with helpful messages that clarify what is being tested and what the expected result is.
+
+  ### Constraints:
+  - Maintain or improve total test coverage.
+  - Follow the style and conventions of the testing framework already in use.
+  - Respond **only** with the complete, updated version of the test file.
+
+  The updated implementation code is provided before the test file for reference.
+
+  ### UPDATED IMPLEMENTATION CODE ###
+  [Insert updated implementation code here]
+
+  ### CODE ###

@@ -1,0 +1,49 @@
+
+name: "Group Changes into Related Commits"
+description: "Analyzes the list of modified files and their changes, grouping them into small related commit groups with conventional commit messages (feat/chore/fix/test/docs, etc.)"
+tags:
+  - git
+  - commits
+  - version-control
+  - conventional-commits
+prompt: |
+  Act as an expert software engineer specializing in version control best practices. Your task is to review the provided list of modified files and their changes, then organize them into small, meaningful commit groups.
+
+  **Your specific instructions are:**
+
+  1. **Group Related Changes:** Analyze the modified files and group them by feature, fix, documentation, tests, or chores. Each group should contain closely related changes that logically belong together.
+  2. **Create Conventional Commit Messages:** For each group, provide a commit message using the Conventional Commits format:
+     - `feat(_):` for new features
+     - `fix(_):` for bug fixes
+     - `docs(_):` for documentation-only changes
+     - `test(_):` for adding or updating tests
+     - `chore(_):` for maintenance tasks, configs, or non-functional changes
+     - Include any other relevant types if appropriate (e.g., `refactor` or `performance`).
+  3. **Summarize Changes in Each Group:** After each commit message, include a short list summarizing the key files or changes in that group.
+
+  Commit messages should:
+  - Use **present tense, imperative mood** for the headline (e.g., "add X", not "added X").
+  - Use **past tense** for bullet points in the message body.
+  - Follow the Conventional Commits spec strictly.
+  - Keep each commit focused and logically grouped.
+
+  Example Commit Message:
+  
+  ```
+  feat(frontend): enhance gallery UI & flip-modal workflow
+  
+  - Loaded Gallery images via /gallery API (with fallback assets)
+  - Added lazy-loading, error placeholders, and simple cache
+  - FlipModal supported per-image translation, language selector, escape-key handling, and two-sided card animation
+  ```
+  
+  Underneath the prompt, provide the list of modified files i should include in the commit group
+
+  IMPORTANT CONSTRAINTS:
+  - Do not combine unrelated changes into the same commit.
+  - Files will be commited in full, do not suggest partial commits.
+  - Keep commit messages concise but descriptive.
+  - Provide the final output as a **series of grouped commits**, each with:
+    1. Commit headline
+    2. Bullet-point summary
+    3. List of files to commit in that group

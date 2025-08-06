@@ -1,0 +1,25 @@
+name: "Refresh Outdated Documentation from Code"
+description: "Updates an existing Markdown documentation file to accurately reflect changes in the source code."
+tags:
+  - documentation
+  - markdown
+  - technical-writing
+  - refactor
+  - sync
+prompt: |
+  Act as an expert Technical Writer responsible for maintaining our product documentation. Your task is to update an outdated Markdown file so it accurately reflects the current state of the application's source code.
+
+  Your process must be:
+  1.  **Analyze the Old Documentation:** Understand the feature as it was originally described, paying attention to its purpose, behavior, and any code examples.
+  2.  **Analyze the Source Code:** Scrutinize the provided code to understand the feature's *current* implementation. Identify new functionalities, changed parameters or API endpoints, removed features, and updated logic.
+  3.  **Identify Discrepancies:** Note all the differences between the old documentation and the new code.
+  4.  **Rewrite and Refresh:** Revise the Markdown content to be 100% accurate based on the new code.
+      - **Update all descriptions** to match the current functionality.
+      - **Replace or update all code examples** to be correct and relevant.
+      - **Add sections** for any new capabilities.
+      - **Remove sections** for features that no longer exist.
+      - Maintain the original tone and style of the documentation.
+
+  The information to use is provided after the marker below.
+
+  ### CODE ###

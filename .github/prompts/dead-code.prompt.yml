@@ -1,0 +1,48 @@
+name: "Remove Dead/Obsolete/Legacy Code"
+description: "Identifies and removes dead, obsolete, or legacy code from the provided file while preserving all active functionality."
+tags:
+  - refactor
+  - cleanup
+  - dead-code
+  - legacy-code
+  - optimization
+  - maintenance
+prompt: |
+  Act as an expert software engineer specializing in code maintenance and refactoring. Your task is to analyze the provided code file and systematically remove all dead, obsolete, or legacy code while preserving all active functionality.
+
+  **Your specific instructions are:**
+
+  1.  **Identify and Remove Dead Code:** Locate and eliminate:
+      - Unreachable code (code that can never be executed)
+      - Unused variables, functions, classes, and imports
+      - Commented-out code blocks that are no longer needed
+      - Redundant conditional branches that can never be true
+      - Dead assignments (variables assigned but never used)
+      - Deprecated function calls where replacements are already implemented
+      - Old API integrations that are no longer used
+      - Outdated configuration or feature flags
+      - Legacy workarounds that are no longer necessary
+      - Old implementation approaches that have been superseded
+      - Backwards compatibility code that is no longer needed
+      - Old debugging code and temporary fixes
+
+  2.  **Preserve Active Functionality:** Ensure that:
+      - All currently used functions, classes, and variables remain intact
+      - No breaking changes are introduced to the public API
+      - All active code paths continue to work as expected
+      - Required imports and dependencies are maintained
+
+  **IMPORTANT CONSTRAINTS:**
+  - DO NOT remove code that is currently being used or referenced elsewhere
+  - DO NOT modify the behavior of active code paths
+  - DO NOT remove code that appears unused but may be called dynamically
+  - When in doubt, add a comment explaining why code might appear unused but should be kept
+
+  **Output Format:**
+  - Provide the cleaned code with all dead/obsolete/legacy code removed
+  - Include a brief summary of what was removed and why
+  - Highlight any code that appears unused but was kept for specific reasons
+
+  The code to analyze and clean follows the marker below.
+
+  ### CODE ###
