@@ -1,0 +1,29 @@
+{
+  "name": "lenslate-frontend-tests",
+  "version": "1.0.0",
+  "description": "Frontend JavaScript tests for Lenslate",
+  "type": "module",
+  "scripts": {
+    "test": "cross-env NODE_NO_WARNINGS=1 NODE_OPTIONS=\"--experimental-vm-modules\" jest --config jest.config.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:check": "eslint . --max-warnings 0",
+    "stylelint": "stylelint \"**/*.css\"",
+    "stylelint:fix": "stylelint \"**/*.css\" --fix"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@jest/globals": "^29.7.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.32.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.6.2",
+    "stylelint": "^16.23.0",
+    "stylelint-config-standard": "^39.0.0",
+    "web-vitals": "^5.1.0"
+  }
+}

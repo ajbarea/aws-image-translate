@@ -1,0 +1,26 @@
+{
+    "extends": [
+        "stylelint-config-standard"
+    ],
+    "rules": {
+        "comment-empty-line-before": [
+            "always",
+            {
+                "except": [
+                    "first-nested"
+                ],
+                "ignore": [
+                    "stylelint-commands"
+                ]
+            }
+        ],
+        "declaration-block-no-redundant-longhand-properties": true,
+        "no-descending-specificity": true,
+        "selector-class-pattern": [
+            "^([a-z][a-z0-9]*)(-[a-z0-9]+)*$",
+            {
+                "message": "Selector class pattern should be in kebab-case"
+            }
+        ]
+    }
+}
