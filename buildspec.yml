@@ -1,0 +1,106 @@
+version: 0.2
+
+cache:
+  paths:
+    - '/root/.cache/pip'
+    - 'node_modules/**/*'
+
+env:
+  secrets-manager:
+    GOOGLE_OAUTH_CLIENT_ID: "lenslate/google-oauth:client_id"
+    GOOGLE_OAUTH_CLIENT_SECRET: "lenslate/google-oauth:client_secret"
+    REDDIT_CLIENT_ID: "lenslate/reddit-api:client_id"
+    REDDIT_CLIENT_SECRET: "lenslate/reddit-api:client_secret"
+    REDDIT_USER_AGENT: "lenslate/reddit-api:user_agent"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo "Installing dependencies..."
+      - pip install --upgrade pip
+      - pip install -r lambda_functions/requirements.txt
+      - pip install -e ".[testing]"
+      - npm install
+
+  pre_build:
+    commands:
+      - echo "Running tests with mock credentials..."
+      
+      # Set up test environment with dummy credentials
+      - export AWS_DEFAULT_REGION=us-east-1
+      - export AWS_ACCESS_KEY_ID=test_access_key
+      - export AWS_SECRET_ACCESS_KEY=test_secret_key
+      - export MOTO_MOCK_AWS=true
+
+      # Create .env.local for tests
+      - |
+        cat <<EOF > .env.local
+        REDDIT_CLIENT_ID=dummy_client_id
+        REDDIT_CLIENT_SECRET=dummy_client_secret
+        REDDIT_USER_AGENT=codebuild:lenslate-deploy:1.0
+        GOOGLE_OAUTH_CLIENT_ID=placeholder_client_id
+        GOOGLE_OAUTH_CLIENT_SECRET=placeholder_client_secret
+        EOF
+
+      # Run tests with mock credentials
+      - pytest tests/ --maxfail=1 --disable-warnings -v --tb=short
+      - npm test
+      
+      # Clear test credentials before build phase
+      - unset AWS_ACCESS_KEY_ID
+      - unset AWS_SECRET_ACCESS_KEY
+      - unset MOTO_MOCK_AWS
+      
+      # Now use real CodeBuild credentials for build phase
+      - echo "Setting up build with real AWS credentials..."
+      - export AWS_DEFAULT_REGION=us-east-1
+
+  build:
+    commands:
+      - echo "Starting build validation (no deployment)..."
+      
+      # Create .env.local with real credentials from Secrets Manager
+      - |
+        cat <<EOF > .env.local
+        REDDIT_CLIENT_ID=$REDDIT_CLIENT_ID
+        REDDIT_CLIENT_SECRET=$REDDIT_CLIENT_SECRET
+        REDDIT_USER_AGENT=$REDDIT_USER_AGENT
+        GOOGLE_OAUTH_CLIENT_ID=$GOOGLE_OAUTH_CLIENT_ID
+        GOOGLE_OAUTH_CLIENT_SECRET=$GOOGLE_OAUTH_CLIENT_SECRET
+        EOF
+      
+      # Build Lambda functions only (no deployment in CI/CD)
+      # This ensures all Lambda functions are built and ready for manual deployment
+      - echo "Building Lambda functions..."
+      - cd lambda_functions && python build_all.py
+      - cd ..
+      - echo "Lambda build completed successfully"
+      - echo "Validating Lambda zip files..."
+      - pytest tests/test_lambda_build_validation.py -v --tb=short
+      
+      - echo "Build validation complete - manual deployment required"
+      - |
+        cat <<'DEPLOYMENT_GUIDE'
+        
+        --------------------------------------------------
+        🎉 Congratulations! All tests are passing and the build is ready to deploy.
+        
+        📋 To deploy locally, follow these steps:
+        
+        1️⃣  Copy the environment template:
+            cp .env.example .env.local
+        
+        2️⃣  Fill in your credentials in .env.local
+            (AWS CLI credentials are required, Reddit/Google OAuth are optional)
+        
+        3️⃣  Run the deployment script:
+            python deploy.py
+        
+        --------------------------------------------------
+        DEPLOYMENT_GUIDE
+
+artifacts:
+  files:
+    - '**/*'
