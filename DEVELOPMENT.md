@@ -43,13 +43,17 @@ python manage_reddit_gallery.py
 # automated deletion of AWS resources
 python full_cleanup.py
 
+# automated deletion of tracked resources (generated script)
+cd your_deployment
+python cleanup_resources.py
+
 # automated deletion of the users in cognito
 cd terraform/app-stack
 ./user_reset.sh
 
 ```
 
-`your_deployment` directory contains a resource tracking system that monitors all AWS resources created during deployment
+`your_deployment` directory contains a resource tracking system that monitors all AWS resources created during deployment. The `cleanup_resources.py` script is auto-generated during deployment and provides targeted cleanup of specific tracked resources (S3 buckets, DynamoDB tables, etc.) for the current deployment.
 
 ## Full stack linting commands
 
