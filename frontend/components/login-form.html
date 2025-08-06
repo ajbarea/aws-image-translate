@@ -1,11 +1,23 @@
+<!-- Login Form -->
 <div id="loginFormContainer" class="auth-form-container">
     <h2>Login</h2>
+
+    <!-- Google SSO Button -->
+    <button type="button" id="google-auth-btn" class="login-with-google-btn">
+        Continue with Google
+    </button>
+
+    <div class="oauth-divider">
+        <span>or</span>
+    </div>
+
+    <!-- Login Form -->
     <form id="loginForm">
         <input type="email" id="username" placeholder="Email" required autocomplete="email">
         <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
         <button type="submit">Login</button>
     </form>
     <div class="form-footer">
-        <button type="button" id="goToRegisterBtn" class="secondary-button">Create Account</button>
+        <button type="button" id="go-to-register-btn" class="secondary-button">Sign Up</button>
     </div>
 </div>

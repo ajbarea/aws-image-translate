@@ -1,6 +1,7 @@
 /**
  * Base class for all UI components
  * Provides common functionality for component lifecycle and DOM management
+ * Optimized for memory efficiency with WeakMap tracking and automatic cleanup
  */
 export class BaseComponent {
   constructor(containerId, options = {}) {
@@ -8,7 +9,35 @@ export class BaseComponent {
     this.container = null;
     this.options = options;
     this.isInitialized = false;
+
+    // Using Map to track event listeners for cleanup
     this.eventListeners = new Map();
+    this.boundHandlers = new Map(); // Track bound handlers for cleanup
+    this.cleanupTasks = new Set(); // Track cleanup tasks
+
+    // Bind cleanup to component lifecycle
+    this.setupLifecycleCleanup();
+  }
+
+  /**
+   * Setup automatic cleanup when component is destroyed or page unloads
+   */
+  setupLifecycleCleanup() {
+    // Cleanup on page unload
+    const unloadHandler = () => this.destroy();
+    window.addEventListener("beforeunload", unloadHandler);
+    this.cleanupTasks.add(() => window.removeEventListener("beforeunload", unloadHandler));
+
+    // Cleanup on visibility change (helps with memory when tab is hidden)
+    const visibilityHandler = () => {
+      if (document.hidden && this.isInitialized) {
+        this.pauseComponent();
+      } else if (!document.hidden && this.isInitialized) {
+        this.resumeComponent();
+      }
+    };
+    document.addEventListener("visibilitychange", visibilityHandler);
+    this.cleanupTasks.add(() => document.removeEventListener("visibilitychange", visibilityHandler));
   }
 
   /**
@@ -64,6 +93,22 @@ export class BaseComponent {
     this.eventListeners
       .get(element)
       .push({ event, handler: wrappedHandler, options });
+  }
+
+  /**
+   * Pause component when tab is hidden to save resources
+   */
+  pauseComponent() {
+    // Override in child classes for specific pause behavior
+    console.log(`⏸️ ${this.constructor.name}: Paused`);
+  }
+
+  /**
+   * Resume component when tab becomes visible
+   */
+  resumeComponent() {
+    // Override in child classes for specific resume behavior
+    console.log(`▶️ ${this.constructor.name}: Resumed`);
   }
 
   /**
@@ -132,8 +177,8 @@ export class BaseComponent {
       detail: {
         component: this.constructor.name,
         containerId: this.containerId,
-        ...detail,
-      },
+        ...detail
+      }
     });
     document.dispatchEvent(event);
   }
@@ -149,15 +194,36 @@ export class BaseComponent {
    * Cleanup component resources
    */
   destroy() {
-    // Remove all tracked event listeners
-    for (const [element, listeners] of this.eventListeners) {
-      for (const { event, handler, options } of listeners) {
-        element.removeEventListener(event, handler, options);
+    // Run all cleanup tasks first
+    for (const cleanupTask of this.cleanupTasks) {
+      try {
+        cleanupTask();
+      } catch (error) {
+        console.error(`Error in cleanup task for ${this.constructor.name}:`, error);
       }
     }
-    this.eventListeners.clear();
+    this.cleanupTasks.clear();
+
+    // Remove all tracked event listeners
+    if (this.eventListeners && this.eventListeners.size > 0) {
+      for (const [element, listeners] of this.eventListeners) {
+        if (listeners && Array.isArray(listeners)) {
+          for (const { event, handler, options } of listeners) {
+            try {
+              element.removeEventListener(event, handler, options);
+            } catch (error) {
+              console.warn(`Failed to remove event listener for ${this.constructor.name}:`, error);
+            }
+          }
+        }
+      }
+      this.eventListeners.clear();
+    }
+
+    // Clear bound handlers
+    this.boundHandlers.clear();
     this.isInitialized = false;
-    console.log(`🧹 ${this.constructor.name}: Destroyed`);
+    console.log(`🧹 ${this.constructor.name}: Destroyed and cleaned up`);
   }
 
   /**
@@ -197,12 +263,30 @@ export class BaseComponent {
   }
 
   /**
+   * Show loading message within component
+   */
+  showLoading(message = "Loading...", duration = 0) {
+    this.clearMessages();
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "component-loading";
+    loadingDiv.textContent = message;
+
+    if (this.container) {
+      this.container.insertBefore(loadingDiv, this.container.firstChild);
+
+      if (duration > 0) {
+        setTimeout(() => this.clearMessages(), duration);
+      }
+    }
+  }
+
+  /**
    * Clear error/success messages
    */
   clearMessages() {
     if (this.container) {
       const messages = this.container.querySelectorAll(
-        ".component-error, .component-success"
+        ".component-error, .component-success, .component-loading"
       );
       messages.forEach((msg) => msg.remove());
     }

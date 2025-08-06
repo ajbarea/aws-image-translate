@@ -1,4 +1,10 @@
 import { BaseComponent } from "./BaseComponent.js";
+import {
+  AWS_SUPPORTED_LANGUAGES,
+  getLanguageName,
+  isLanguageSupported,
+  DEFAULT_LANGUAGE
+} from "../constants/languages.js";
 
 /**
  * Language selection component for translation target language
@@ -6,12 +12,13 @@ import { BaseComponent } from "./BaseComponent.js";
 export class LanguageSelectionComponent extends BaseComponent {
   constructor(containerId, options = {}) {
     super(containerId, options);
-    this.defaultLanguage = options.defaultLanguage || "en";
+    this.defaultLanguage = options.defaultLanguage || DEFAULT_LANGUAGE;
     this.excludeLanguages = options.excludeLanguages || [];
   }
 
   async onInit() {
-    this.languageSelect = this.querySelector("#targetLanguage");
+    // Look for any select element within this container
+    this.languageSelect = this.querySelector("select");
     if (!this.languageSelect) {
       throw new Error("Language select element not found");
     }
@@ -36,7 +43,7 @@ export class LanguageSelectionComponent extends BaseComponent {
   }
 
   populateLanguageOptions() {
-    const languages = this.getSupportedLanguages();
+    const languages = AWS_SUPPORTED_LANGUAGES;
 
     // Clear existing options
     this.languageSelect.innerHTML = "";
@@ -54,43 +61,7 @@ export class LanguageSelectionComponent extends BaseComponent {
   }
 
   getSupportedLanguages() {
-    return {
-      en: "English",
-      es: "Spanish",
-      fr: "French",
-      de: "German",
-      it: "Italian",
-      pt: "Portuguese",
-      ru: "Russian",
-      ja: "Japanese",
-      ko: "Korean",
-      zh: "Chinese (Simplified)",
-      "zh-TW": "Chinese (Traditional)",
-      ar: "Arabic",
-      hi: "Hindi",
-      th: "Thai",
-      vi: "Vietnamese",
-      nl: "Dutch",
-      pl: "Polish",
-      tr: "Turkish",
-      sv: "Swedish",
-      da: "Danish",
-      no: "Norwegian",
-      fi: "Finnish",
-      cs: "Czech",
-      hu: "Hungarian",
-      ro: "Romanian",
-      bg: "Bulgarian",
-      hr: "Croatian",
-      sk: "Slovak",
-      sl: "Slovenian",
-      et: "Estonian",
-      lv: "Latvian",
-      lt: "Lithuanian",
-      mt: "Maltese",
-      ga: "Irish",
-      cy: "Welsh",
-    };
+    return AWS_SUPPORTED_LANGUAGES;
   }
 
   getSelectedLanguage() {
@@ -114,14 +85,13 @@ export class LanguageSelectionComponent extends BaseComponent {
   }
 
   getLanguageName(languageCode) {
-    const languages = this.getSupportedLanguages();
-    return languages[languageCode] || languageCode;
+    return getLanguageName(languageCode);
   }
 
   isLanguageSupported(languageCode) {
-    const languages = this.getSupportedLanguages();
     return (
-      languageCode in languages && !this.excludeLanguages.includes(languageCode)
+      isLanguageSupported(languageCode) &&
+      !this.excludeLanguages.includes(languageCode)
     );
   }
 

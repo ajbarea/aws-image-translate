@@ -1,4 +1,5 @@
 import { BaseComponent } from "./BaseComponent.js";
+import { getLanguageName } from "../constants/languages.js";
 
 /**
  * Results display component for showing processing results
@@ -100,10 +101,16 @@ export class ResultsComponent extends BaseComponent {
     this.results.push({
       id: item.id,
       item,
-      element: resultElement,
+      element: resultElement
     });
 
     this.resultsContainer.classList.remove("hidden");
+
+    // Show notification and optionally scroll to result
+    this.showResultNotification(item, resultElement);
+
+    // Emit event for counter updates
+    this.emit("result:added", { item, type: "success" });
   }
 
   addNoTextResult(item) {
@@ -117,11 +124,17 @@ export class ResultsComponent extends BaseComponent {
     this.noTextResults.push({
       id: item.id,
       item,
-      element: noTextElement,
+      element: noTextElement
     });
 
     this.resultsContainer.classList.remove("hidden");
     this.noTextResultsContainer.classList.remove("hidden");
+
+    // Show notification for no-text results too
+    this.showResultNotification(item, noTextElement, true);
+
+    // Emit event for counter updates
+    this.emit("result:added", { item, type: "info" });
   }
 
   removeResult(itemId) {
@@ -195,14 +208,13 @@ export class ResultsComponent extends BaseComponent {
     let resultHTML = `
       <div class="result-header">
         <button class="upload-image-preview" data-image-url="${imageUrl}" data-image-name="${this.escapeHtml(
-      item.file.name
-    )}" title="View original image">
+  item.file.name
+)}" title="View original image">
           <img src="${imageUrl}" alt="${this.escapeHtml(item.file.name)}" />
         </button>
         <h3 class="result-title">${item.file.name}</h3>
-        <button class="result-remove-btn" data-item-id="${
-          item.id
-        }" title="Remove result">×</button>
+        <button class="result-remove-btn" data-item-id="${item.id
+}" title="Remove result">×</button>
       </div>
     `;
 
@@ -263,16 +275,6 @@ export class ResultsComponent extends BaseComponent {
         `;
       }
 
-      // S3 location section
-      if (results.bucket && results.key) {
-        resultHTML += `
-          <div class="result-footer">
-            <span class="result-s3-location">
-              📁 S3 Location: s3://${results.bucket}/${results.key}
-            </span>
-          </div>
-        `;
-      }
     } else {
       resultHTML += `
         <div class="result-no-data">
@@ -318,19 +320,18 @@ export class ResultsComponent extends BaseComponent {
     noTextDiv.innerHTML = `
       <div class="no-text-item-content">
         <button class="upload-image-preview no-text-image-preview" data-image-url="${imageUrl}" data-image-name="${this.escapeHtml(
-      item.file.name
-    )}" title="View image">
+  item.file.name
+)}" title="View image">
           <img src="${imageUrl}" alt="${this.escapeHtml(item.file.name)}" />
         </button>
         <div class="no-text-item-info">
           <span class="no-text-item-name">${this.escapeHtml(
-            item.file.name
-          )}</span>
+    item.file.name
+  )}</span>
           <span class="no-text-item-size">${fileSize}</span>
         </div>
-        <button class="no-text-remove-btn" data-item-id="${
-          item.id
-        }" title="Remove from list">×</button>
+        <button class="no-text-remove-btn" data-item-id="${item.id
+}" title="Remove from list">×</button>
       </div>
     `;
 
@@ -338,11 +339,11 @@ export class ResultsComponent extends BaseComponent {
   }
 
   formatFileSize(bytes) {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) { return "0 Bytes"; }
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   }
 
   async retranslateAllResults(targetLanguage) {
@@ -374,9 +375,14 @@ export class ResultsComponent extends BaseComponent {
       this.emit("result:retranslateRequest", {
         item,
         targetLanguage,
-        callback: (translationResult) => {
+        callback: (error, translationResult) => {
+          if (error) {
+            console.error(`❌ Results: Retranslation failed for ${item.file.name}:`, error);
+            return;
+          }
+          // The translationResult from the backend now contains the full, updated record
           this.updateTranslation(result, translationResult, targetLanguage);
-        },
+        }
       });
     } catch (error) {
       console.error(
@@ -406,7 +412,7 @@ export class ResultsComponent extends BaseComponent {
   }
 
   updateTranslationSection(resultElement, item, targetLanguage) {
-    if (!item.processingResults) return;
+    if (!item.processingResults) { return; }
 
     const results =
       typeof item.processingResults === "string"
@@ -457,44 +463,7 @@ export class ResultsComponent extends BaseComponent {
   }
 
   getLanguageName(languageCode) {
-    const languageMap = {
-      en: "English",
-      es: "Spanish",
-      fr: "French",
-      de: "German",
-      it: "Italian",
-      pt: "Portuguese",
-      ru: "Russian",
-      ja: "Japanese",
-      ko: "Korean",
-      zh: "Chinese (Simplified)",
-      "zh-TW": "Chinese (Traditional)",
-      ar: "Arabic",
-      hi: "Hindi",
-      th: "Thai",
-      vi: "Vietnamese",
-      nl: "Dutch",
-      pl: "Polish",
-      tr: "Turkish",
-      sv: "Swedish",
-      da: "Danish",
-      no: "Norwegian",
-      fi: "Finnish",
-      cs: "Czech",
-      hu: "Hungarian",
-      ro: "Romanian",
-      bg: "Bulgarian",
-      hr: "Croatian",
-      sk: "Slovak",
-      sl: "Slovenian",
-      et: "Estonian",
-      lv: "Latvian",
-      lt: "Lithuanian",
-      mt: "Maltese",
-      ga: "Irish",
-      cy: "Welsh",
-    };
-    return languageMap[languageCode] || languageCode;
+    return getLanguageName(languageCode);
   }
 
   escapeHtml(text) {
@@ -543,6 +512,129 @@ export class ResultsComponent extends BaseComponent {
     return this.results.length > 0 || this.noTextResults.length > 0;
   }
 
+  /**
+   * Get the most recently added result element for scrolling
+   */
+  getLatestResult() {
+    if (this.results.length > 0) {
+      return this.results[this.results.length - 1].element;
+    } else if (this.noTextResults.length > 0) {
+      return this.noTextResults[this.noTextResults.length - 1].element;
+    }
+    return null;
+  }
+
+  /**
+   * Show a toast notification when a result is added with option to scroll to it
+   */
+  showResultNotification(item, resultElement, isNoTextResult = false) {
+    const fileName = item.file.name;
+    const message = isNoTextResult
+      ? `📷 "${fileName}" processed - no text detected`
+      : `✅ "${fileName}"`;
+
+    // Show toast with messaging and actions
+    this.showToast(message, () => {
+      this.scrollToResult(resultElement);
+    }, isNoTextResult ? "info" : "success", {
+      showCounter: true,
+      autoHide: true
+    });
+  }
+
+  /**
+   * Show a toast notification with optional action
+   */
+  showToast(message, onAction = null, type = "success", options = {}) {
+    const defaultOptions = {
+      autoHide: true,
+      hideDelay: 5000,
+      showCounter: false,
+      persistent: false
+    };
+    const config = { ...defaultOptions, ...options };
+
+    // Remove existing toast
+    const existingToast = document.querySelector(".result-toast");
+    if (existingToast) {
+      existingToast.remove();
+    }
+
+    const toast = document.createElement("div");
+    toast.className = `result-toast result-toast-${type}`;
+
+    // Add counter if multiple results are being processed
+    const processingCount = this.getProcessingCount();
+    const counterText = config.showCounter && processingCount > 1
+      ? ` (${processingCount} total)`
+      : "";
+
+    const content = document.createElement("div");
+    content.className = "result-toast-content";
+    content.innerHTML = `
+      <div class="result-toast-header">
+        <span class="result-toast-message">${this.escapeHtml(message + counterText)}</span>
+        <button class="result-toast-close">&times;</button>
+      </div>
+      ${onAction ? '<button class="result-toast-action">View Result</button>' : ""}
+    `;
+
+    toast.appendChild(content);
+
+    // Add event listeners
+    const closeBtn = toast.querySelector(".result-toast-close");
+    closeBtn.addEventListener("click", () => toast.remove());
+
+    if (onAction) {
+      const actionBtn = toast.querySelector(".result-toast-action");
+      actionBtn.addEventListener("click", () => {
+        onAction();
+        toast.remove();
+      });
+    }
+
+    // Add to DOM
+    document.body.appendChild(toast);
+
+    // Auto-remove after delay (unless persistent)
+    if (config.autoHide && !config.persistent) {
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          toast.classList.add("result-toast-fade-out");
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, config.hideDelay);
+    }
+  }
+
+  /**
+   * Get count of items currently being processed or recently completed
+   */
+  getProcessingCount() {
+    // You could track this in your upload queue component
+    // For now, return the current results count as a simple implementation
+    return this.results.length + this.noTextResults.length;
+  }
+
+  /**
+   * Smoothly scroll to a specific result element
+   */
+  scrollToResult(resultElement) {
+    if (resultElement && resultElement.scrollIntoView) {
+      resultElement.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest"
+      });
+
+      // Add a brief highlight effect
+      resultElement.classList.add("result-highlight");
+      setTimeout(() => {
+        resultElement.classList.remove("result-highlight");
+      }, 2000);
+    }
+  }
+
   openImageModal(imageUrl, imageName) {
     // Remove existing modal if present
     this.closeImageModal();
@@ -561,8 +653,8 @@ export class ResultsComponent extends BaseComponent {
         </div>
         <div class="image-modal-body">
           <img src="${imageUrl}" alt="${this.escapeHtml(
-      imageName
-    )}" class="image-modal-img" />
+  imageName
+)}" class="image-modal-img" />
         </div>
       </div>
     `;

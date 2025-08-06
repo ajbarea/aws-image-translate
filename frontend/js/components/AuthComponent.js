@@ -27,12 +27,35 @@ export class AuthComponent extends BaseComponent {
       throw new Error("Auth form containers not found");
     }
 
+    // Configure Google OAuth button visibility
+    this.configureGoogleOAuthButton();
+
     // Show login form by default
     this.showLoginForm();
 
     // Ensure other forms are hidden initially
     this.registerFormContainer.classList.add("hidden");
     this.confirmationFormContainer.classList.add("hidden");
+  }
+
+  configureGoogleOAuthButton() {
+    const googleAuthBtn = this.querySelector("#google-auth-btn");
+    const oauthDivider = this.querySelector(".oauth-divider");
+
+    if (googleAuthBtn && oauthDivider) {
+      // Check if Google OAuth is available
+      if (!this.auth.isGoogleSSOAvailable()) {
+        // Hide Google button and divider when OAuth is not configured
+        googleAuthBtn.style.display = "none";
+        oauthDivider.style.display = "none";
+        console.log("AuthComponent: Google OAuth not configured, hiding Google sign-in button");
+      } else {
+        // Ensure button and divider are visible when OAuth is configured
+        googleAuthBtn.style.display = "block";
+        oauthDivider.style.display = "flex";
+        console.log("AuthComponent: Google OAuth configured, showing Google sign-in button");
+      }
+    }
   }
 
   setupEventListeners() {
@@ -67,14 +90,16 @@ export class AuthComponent extends BaseComponent {
   handleButtonClick(e) {
     const target = e.target;
 
-    if (target.matches("#goToRegisterBtn")) {
+    if (target.matches("#go-to-register-btn")) {
       this.showRegisterForm();
     } else if (target.matches("#backToLoginFromRegister")) {
       this.showLoginForm();
-    } else if (target.matches("#resendCodeBtn")) {
+    } else if (target.matches("#resend-code-btn")) {
       this.handleResendConfirmationCode();
-    } else if (target.matches("#backToLoginBtn")) {
+    } else if (target.matches("#back-to-login-btn")) {
       this.showLoginForm();
+    } else if (target.matches("#google-auth-btn")) {
+      this.handleGoogleAuth();
     }
   }
 
@@ -163,7 +188,28 @@ export class AuthComponent extends BaseComponent {
       form.reset();
     } catch (error) {
       console.error("Registration failed:", error);
-      this.showError(error.message || "Registration failed. Please try again.");
+
+      // Check if this is an existing account
+      if (
+        error.originalError &&
+        error.originalError.code === "UsernameExistsException"
+      ) {
+        // Try to determine if the account is confirmed or not
+        await this.handleExistingUser(emailInput.value);
+      } else if (
+        error.message &&
+        error.message.includes("already exists and is verified")
+      ) {
+        // Handle the new Lambda error message for verified users
+        this.showLoginForm();
+        this.showError(
+          "An account with this email already exists and is verified. Please use the login form to sign in."
+        );
+      } else {
+        this.showError(
+          error.message || "Registration failed. Please try again."
+        );
+      }
     } finally {
       submitButton.textContent = originalButtonText;
       submitButton.disabled = false;
@@ -216,7 +262,7 @@ export class AuthComponent extends BaseComponent {
       return;
     }
 
-    const resendBtn = this.querySelector("#resendCodeBtn");
+    const resendBtn = this.querySelector("#resend-code-btn");
     const originalText = resendBtn.textContent;
 
     try {
@@ -243,6 +289,71 @@ export class AuthComponent extends BaseComponent {
       this.showError("Failed to send confirmation code. Please try again.");
       resendBtn.textContent = originalText;
       resendBtn.disabled = false;
+    }
+  }
+
+  async handleExistingUser(email) {
+    try {
+      // Check user status directly
+      const userStatus = await this.auth.checkUserStatus(email);
+      console.log("User status check completed");
+
+      if (userStatus.status === "CONFIRMED" && userStatus.verified) {
+        // User is already confirmed - direct them to login
+        this.showLoginForm();
+        this.showError(
+          "An account with this email already exists and is verified. Please use the login form to sign in."
+        );
+      } else if (userStatus.status === "UNCONFIRMED") {
+        // User exists but not confirmed - try to resend confirmation code
+        try {
+          await this.auth.resendConfirmationCode(email);
+          this.showConfirmationForm(email);
+          this.showSuccess(
+            `This account already exists but is not yet confirmed. We've sent a confirmation code to your email (${email}). Please enter it below to complete your registration.`
+          );
+        } catch (resendError) {
+          console.log("Resend failed:", resendError);
+          // If resend fails, still show confirmation form as fallback
+          this.showConfirmationForm(email);
+          this.showSuccess(
+            `This account already exists. Please check your email (${email}) for a confirmation code, or click "Resend Code" below.`
+          );
+        }
+      } else {
+        // Unknown status - show confirmation form as fallback
+        this.showConfirmationForm(email);
+        this.showSuccess(
+          `This account already exists. Please check your email (${email}) for a confirmation code, or click "Resend Code" below.`
+        );
+      }
+    } catch (error) {
+      console.error("Error checking user status:", error);
+      // Fallback to previous logic if status check fails
+      try {
+        await this.auth.resendConfirmationCode(email);
+        this.showConfirmationForm(email);
+        this.showSuccess(
+          `This account already exists but is not yet confirmed. We've sent a confirmation code to your email (${email}). Please enter it below to complete your registration.`
+        );
+      } catch (resendError) {
+        console.log("Resend confirmation code failed:", resendError);
+        if (
+          resendError.originalError?.code === "InvalidParameterException" ||
+          resendError.originalError?.code === "NotAuthorizedException" ||
+          resendError.message?.includes("already confirmed")
+        ) {
+          this.showLoginForm();
+          this.showError(
+            "An account with this email already exists and is verified. Please use the login form to sign in."
+          );
+        } else {
+          this.showConfirmationForm(email);
+          this.showSuccess(
+            `This account already exists. Please check your email (${email}) for a confirmation code, or click "Resend Code" below.`
+          );
+        }
+      }
     }
   }
 
@@ -290,5 +401,21 @@ export class AuthComponent extends BaseComponent {
 
   getPendingConfirmationEmail() {
     return this.pendingConfirmationEmail;
+  }
+
+  async handleGoogleAuth() {
+    try {
+      // Check if Google OAuth is available before attempting sign-in
+      if (!this.auth.isGoogleSSOAvailable()) {
+        this.showError("Google sign-in is not configured. Please use email/password authentication.");
+        return;
+      }
+
+      this.showLoading("Redirecting to Google...");
+      await this.auth.signInWithGoogle();
+    } catch (error) {
+      console.error("Google authentication failed:", error);
+      this.showError("Failed to authenticate with Google. Please try again.");
+    }
   }
 }

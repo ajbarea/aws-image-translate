@@ -25,14 +25,16 @@ document.addEventListener("DOMContentLoaded", () => {
     { name: "register-form", placeholderId: "register-form-placeholder" },
     {
       name: "confirmation-form",
-      placeholderId: "confirmation-form-placeholder",
+      placeholderId: "confirmation-form-placeholder"
     },
     {
       name: "language-selection",
-      placeholderId: "language-selection-placeholder",
+      placeholderId: "language-selection-placeholder"
     },
     { name: "file-upload", placeholderId: "file-upload-placeholder" },
     { name: "upload-list", placeholderId: "upload-list-placeholder" },
+    { name: "gallery", placeholderId: "gallery-placeholder" },
+    { name: "dashboard", placeholderId: "dashboard-placeholder" }
   ];
 
   const loadPromises = componentsToLoad.map((comp) =>

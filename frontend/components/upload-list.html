@@ -1,3 +1,40 @@
-<ul class="upload-list" id="uploadList">
-    <!-- Upload items will be added here -->
-</ul>
+<!-- Upload Queue Section -->
+<div class="upload-queue-container">
+    <!-- Active/Processing Uploads -->
+    <div class="upload-section active-uploads" id="activeUploadsSection">
+        <div class="upload-section-header">
+            <span class="upload-section-title">📤 Processing Queue</span>
+            <span class="upload-section-count" id="activeCount">(0 items)</span>
+        </div>
+        <ul class="upload-list" id="activeUploadList">
+            <!-- Active upload items will be added here -->
+        </ul>
+    </div>
+
+    <!-- Completed Uploads -->
+    <div class="upload-section completed-uploads hidden" id="completedUploadsSection">
+        <div class="upload-section-header clickable" id="completedToggle">
+            <span class="upload-section-title">✅ Completed</span>
+            <span class="upload-section-count" id="completedCount">(0 items)</span>
+            <div class="upload-section-actions">
+                <button class="clear-completed-btn" id="clear-completed-btn" title="Clear completed items">🗑️</button>
+                <span class="upload-section-toggle">▼</span>
+            </div>
+        </div>
+        <ul class="upload-list collapsible" id="completedUploadList">
+            <!-- Completed upload items will be moved here -->
+        </ul>
+    </div>
+
+    <!-- Failed Uploads -->
+    <div class="upload-section failed-uploads hidden" id="failedUploadsSection">
+        <div class="upload-section-header">
+            <span class="upload-section-title">❌ Failed</span>
+            <span class="upload-section-count" id="failedCount">(0 items)</span>
+            <button class="retry-all-btn" id="retry-all-btn">Retry All</button>
+        </div>
+        <ul class="upload-list" id="failedUploadList">
+            <!-- Failed upload items will be moved here -->
+        </ul>
+    </div>
+</div>

@@ -4,19 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS Image Translator</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <title>Lenslate</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1691.0.min.js"></script>
     <script
         src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
-    <link href="css/styles.css" rel="stylesheet">
+    <!-- Chart.js fallback - loaded only if dynamic import fails -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" defer></script>
+    <link href="/css/styles.css" rel="stylesheet">
 </head>
 
 <body>
     <div class="container">
         <div id="header-placeholder"></div>
 
-        <div id="loginSection">
+        <!-- Loading indicator shown while determining auth state -->
+        <div id="loadingSection" style="display: block;">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <p>Loading...</p>
+            </div>
+        </div>
+
+        <div id="loginSection" style="display: none">
             <div id="login-form-placeholder"></div>
 
             <div id="register-form-placeholder"></div>
@@ -25,25 +35,51 @@
         </div>
 
         <div id="appSection" style="display: none">
-            <div id="language-selection-placeholder"></div>
+            <div id="tabs-container" style="display: none;">
+                <button id="upload-tab" class="tab-button active">Upload</button>
+                <button id="gallery-tab" class="tab-button">Gallery</button>
+                <button id="dashboard-tab" class="tab-button">Dashboard</button>
+            </div>
 
-            <div id="file-upload-placeholder"></div>
+            <div id="app-content">
+                <div id="upload-view">
+                    <div id="language-selection-placeholder"></div>
+                    <div id="file-upload-placeholder"></div>
+                    <div id="upload-list-placeholder"></div>
+                    <button id="process-btn" style="display: none">Process All Images</button>
+                    <button id="clear-all-btn" style="display: none">Clear All</button>
 
-            <div id="upload-list-placeholder"></div>
+                    <!-- Processing Status Bar -->
+                    <div id="processing-status" class="processing-status hidden">
+                        <div class="processing-status-content">
+                            <span class="processing-status-text">Processing images...</span>
+                            <span class="processing-status-count">0 completed</span>
+                            <button class="processing-status-toggle" title="Scroll to latest result">
+                                📍 View Latest
+                            </button>
+                        </div>
+                        <div class="processing-status-progress">
+                            <div class="processing-status-bar"></div>
+                        </div>
+                    </div>
 
-            <button id="processBtn" style="display: none">Process All Images</button>
-
-            <button id="clearAllBtn" style="display: none">Clear All</button>
-
-            <div id="results-placeholder"></div>
+                    <div id="results-placeholder"></div>
+                </div>
+                <div id="gallery-view" style="display: none;">
+                    <div id="gallery-placeholder"></div>
+                </div>
+                <div id="dashboard-view" style="display: none;">
+                    <div id="dashboard-placeholder"></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Application Scripts -->
-    <script src="js/component-loader.js"></script>
-    <script type="module" src="js/config.js"></script>
-    <script type="module" src="js/auth.js"></script>
-    <script type="module" src="js/app.js"></script>
+    <!-- App Scripts -->
+    <script src="/js/component-loader.js"></script>
+    <script src="/js/config.js"></script>
+    <script type="module" src="/js/auth.js"></script>
+    <script type="module" src="/js/app.js"></script>
 </body>
 
 </html>

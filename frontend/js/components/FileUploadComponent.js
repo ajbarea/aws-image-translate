@@ -7,7 +7,7 @@ export class FileUploadComponent extends BaseComponent {
   constructor(containerId, options = {}) {
     super(containerId, options);
     this.acceptedTypes = options.acceptedTypes || ["image/*"];
-    this.maxFileSize = options.maxFileSize || 10 * 1024 * 1024; // 10MB default
+    this.maxFileSize = options.maxFileSize || 15 * 1024 * 1024; // 15MB default (AWS Rekognition limit)
     this.maxFiles = options.maxFiles || 10;
     this.isProcessingFiles = false;
   }
@@ -143,21 +143,15 @@ export class FileUploadComponent extends BaseComponent {
   }
 
   validateFile(file) {
-    // Check file type
-    const isValidType = this.acceptedTypes.some((type) => {
-      if (type.endsWith("/*")) {
-        const category = type.slice(0, -2);
-        return file.type.startsWith(category + "/");
-      }
-      return file.type === type;
-    });
+    // Check file type - be more specific about supported formats for Rekognition
+    const supportedTypes = ["image/jpeg", "image/jpg", "image/png"];
+    const isValidType = supportedTypes.includes(file.type);
 
     if (!isValidType) {
+      const fileExtension = file.name.split(".").pop()?.toLowerCase() || "unknown";
       return {
         valid: false,
-        error: `Invalid file type. Accepted types: ${this.acceptedTypes.join(
-          ", "
-        )}`,
+        error: `Unsupported format (.${fileExtension}). Only JPG, JPEG, and PNG files are supported for text recognition.`
       };
     }
 
@@ -166,26 +160,29 @@ export class FileUploadComponent extends BaseComponent {
       const sizeMB = Math.round(this.maxFileSize / 1024 / 1024);
       return {
         valid: false,
-        error: `File too large. Maximum size: ${sizeMB}MB`,
+        error: `File too large. Maximum size: ${sizeMB}MB`
       };
     }
 
     // Check if it's actually an image by trying to create an image element
     return new Promise((resolve) => {
-      if (file.type.startsWith("image/")) {
-        const img = new Image();
-        img.onload = () => {
-          URL.revokeObjectURL(img.src);
-          resolve({ valid: true });
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(img.src);
-          resolve({ valid: false, error: "Invalid or corrupted image file" });
-        };
-        img.src = URL.createObjectURL(file);
-      } else {
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(img.src);
+
+        // Additional validation for image dimensions (optional)
+        if (img.width < 10 || img.height < 10) {
+          resolve({ valid: false, error: "Image too small (minimum 10x10 pixels)" });
+          return;
+        }
+
         resolve({ valid: true });
-      }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        resolve({ valid: false, error: "Invalid or corrupted image file" });
+      };
+      img.src = URL.createObjectURL(file);
     });
   }
 
