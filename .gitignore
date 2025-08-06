@@ -10,8 +10,6 @@ ENV/
 .ENV/
 
 # IDE & Editor specific
-.vscode/
-.github/
 .claude/
 .kiro/
 .idea/
