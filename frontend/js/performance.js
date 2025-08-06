@@ -1,4 +1,4 @@
-import { onCLS, onFID, onLCP } from "https://unpkg.com/web-vitals@5.1.0/dist/web-vitals.js";
+import { onCLS, onINP, onLCP } from "https://unpkg.com/web-vitals@5.1.0/dist/web-vitals.js";
 
 const { AWS_CONFIG } = window;
 
@@ -68,7 +68,7 @@ export function initPerformanceMonitor() {
 
     // Set up listeners for Core Web Vitals
     onCLS(logMetric);
-    onFID(logMetric);
+    onINP(logMetric);
     onLCP(logMetric);
 
     // Set up a global error handler for unhandled exceptions
