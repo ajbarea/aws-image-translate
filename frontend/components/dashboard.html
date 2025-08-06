@@ -1,0 +1,54 @@
+<!-- Dashboard Component -->
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h2>Dashboard</h2>
+        <button id="edit-settings-btn" class="btn-secondary">Account Settings</button>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="dashboard-section">
+        <h3>Statistics</h3>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Images Processed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">0</div>
+                <div class="stat-label">Translations Made</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">-</div>
+                <div class="stat-label">Most Used Language</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Monitoring Section -->
+    <div class="dashboard-section">
+        <h3>Performance Monitoring</h3>
+        <div id="performance-dashboard-placeholder">
+            <p class="no-data-message">Performance dashboard will load here.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Translation History Section -->
+<div class="dashboard-content">
+    <div class="dashboard-section">
+        <h3>Translation History</h3>
+        <div class="history-placeholder">
+            <p class="no-data-message">Your translation history will appear here once you start using the service.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal (initially hidden) -->
+<div id="settingsModal" class="settings-modal-overlay" style="display: none;">
+    <div class="settings-modal">
+        <div id="settingsModalContent">
+            <!-- ProfileComponent will be rendered here -->
+        </div>
+    </div>
+</div>
