@@ -271,9 +271,11 @@ def test_build_lambda_functions_failure(mock_run, orchestrator):
 @patch.object(DeploymentOrchestrator, "_handle_environment_file")
 @patch.object(DeploymentOrchestrator, "_verify_and_fix_configuration")
 @patch.object(DeploymentOrchestrator, "validate_terraform_configuration")
+@patch("subprocess.run")
 @patch("pathlib.Path.exists")
 def test_validate_prerequisites_success(
     mock_path_exists,
+    mock_run,
     mock_validate_tf_config,
     mock_verify_fix,
     mock_handle_env,
@@ -284,12 +286,15 @@ def test_validate_prerequisites_success(
     """Test a successful prerequisite validation flow."""
     # Mock all checks to return success
     mock_py_detector.return_value.detect_and_validate.return_value = (True, "python3")
-    mock_check_cmd.side_effect = [True, True]  # terraform, aws
+    mock_check_cmd.side_effect = [True, True, True]  # terraform, aws, npm
     orchestrator.validate_terraform_version = MagicMock(return_value=True)
     mock_handle_env.return_value = True
     mock_verify_fix.return_value = True
     mock_validate_tf_config.return_value = True
     mock_path_exists.return_value = True  # For post-deploy script and lambda files
+    mock_run.return_value = MagicMock(
+        returncode=0, stdout="Success", stderr=""
+    )  # For subprocess calls in _install_dependencies
 
     assert orchestrator.validate_prerequisites() is True
     assert orchestrator.python_cmd == "python3"

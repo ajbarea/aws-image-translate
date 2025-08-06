@@ -1269,6 +1269,10 @@ GITHUB_CONNECTION_ARN=
         if not self.validate_terraform_configuration():
             return False
 
+        # Install project dependencies
+        if not self._install_dependencies():
+            return False
+
         # Check post-deployment message script
         post_deploy_script = self.terraform_dir / "post_deploy_message.py"
         if not post_deploy_script.exists():
@@ -1309,6 +1313,76 @@ GITHUB_CONNECTION_ARN=
             return False
         else:
             self.progress.success("All Lambda source files found")
+
+        return True
+
+    def _install_dependencies(self) -> bool:
+        """Install npm and Python dependencies"""
+        self.progress.next_step("Installing project dependencies")
+
+        # Install npm dependencies
+        self.progress.info("Installing npm dependencies...")
+        if self.check_command_exists("npm"):
+            try:
+                # Use shell=True on Windows to properly find npm
+                use_shell = self.platform == "windows"
+                result = subprocess.run(
+                    ["npm", "install"],
+                    cwd=self.root_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,  # 5 minutes timeout
+                    shell=use_shell,
+                )
+                if result.returncode == 0:
+                    self.progress.success("npm dependencies installed successfully")
+                else:
+                    self.progress.error(f"npm install failed: {result.stderr}")
+                    return False
+            except subprocess.TimeoutExpired:
+                self.progress.error("npm install timed out after 5 minutes")
+                return False
+            except Exception as e:
+                self.progress.error(f"Failed to run npm install: {e}")
+                return False
+        else:
+            self.progress.warning("npm not found, skipping JavaScript dependencies")
+            self.progress.info(
+                "Install Node.js and npm if you need to run frontend tests"
+            )
+
+        # Install Python dependencies in editable mode with testing extras
+        self.progress.info("Installing Python dependencies in editable mode...")
+        if not self.python_cmd:
+            self.progress.error("Python command not available")
+            return False
+
+        try:
+            result = subprocess.run(
+                [
+                    cast(str, self.python_cmd),
+                    "-m",
+                    "pip",
+                    "install",
+                    "-e",
+                    ".[testing]",
+                ],
+                cwd=self.root_dir,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minutes timeout
+            )
+            if result.returncode == 0:
+                self.progress.success("Python dependencies installed successfully")
+            else:
+                self.progress.error(f"pip install failed: {result.stderr}")
+                return False
+        except subprocess.TimeoutExpired:
+            self.progress.error("pip install timed out after 5 minutes")
+            return False
+        except Exception as e:
+            self.progress.error(f"Failed to run pip install: {e}")
+            return False
 
         return True
 
